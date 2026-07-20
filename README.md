@@ -8,14 +8,15 @@ Proyek ini dibangun dengan CodeIgniter 4 dan berjalan di atas PHP 8.1 atau lebih
 
 - Landing page, halaman legal, login/register user, login/register kreator, forgot password, dan reset password.
 - Explore karya dengan spotlight, filter genre/tipe, mode gallery, mode story, pencarian karya, dan pencarian user/kreator.
-- Format konten: novel, light novel, comic, text, image, dan PDF pada skema konten.
-- Detail karya, reader chapter, navigasi chapter, komentar per karya/chapter, like, bookmark, follow kreator, dan profil publik.
+- Format konten: text, novel, light novel, comic, image, dan PDF pada skema konten.
+- Detail karya, reader chapter, navigasi chapter, komentar per karya/chapter, hapus komentar sendiri, like, bookmark, follow/unfollow kreator, statistik follow, dan profil publik.
 - View counter dengan threshold baca 2 menit agar statistik lebih bermakna.
 - Reading history dan resume terakhir dibaca untuk pengguna login.
-- Sistem Cooling Credit (CC) untuk top up, unlock karya, unlock chapter, checkout cart, download karya gambar, dan pendapatan kreator.
-- Konten berbayar mendukung akses full, akses per chapter, harga preview, harga beli permanen, timer preview, watermark gambar, dan chapter terkunci.
-- Dashboard pengguna untuk profil, bookmark/koleksi, cart, follows, top up, dan notifikasi.
-- Dashboard kreator untuk statistik ringkas, manajemen karya, chapter, galeri gambar, publish/archive/delete, statistik karya, monetisasi, penarikan dummy, riwayat transaksi, export Excel/PDF, dan receipt transaksi.
+- Sistem Cooling Credit (CC) untuk top up, unlock karya, unlock chapter, checkout cart, download karya, dan pendapatan kreator.
+- Konten berbayar mendukung akses full, akses per chapter, harga preview, harga beli permanen, timer preview, watermark gambar, blur/lock state, dan chapter terkunci.
+- Cart karya downloadable dengan checkout CC, halaman auto-download setelah checkout, download ZIP untuk karya gambar, dan export PDF untuk karya teks/novel/light novel/comic.
+- Dashboard pengguna untuk profil, bookmark/koleksi, cart, follows, top up, dan notifikasi realtime/AJAX.
+- Dashboard kreator untuk statistik ringkas, manajemen karya, chapter, galeri gambar, publish/archive/delete, statistik karya, analitik per karya, monetisasi, penarikan dummy, riwayat transaksi, export Excel/PDF, dan receipt transaksi.
 - Panel admin `alpha-admin` untuk dashboard statistik, user management, creator management, status Starsoul, penyesuaian saldo CC, transaksi, top up, ekonomi, konten, laporan, gallery, CMS landing/page/FAQ, audit, sistem, dan notifikasi.
 - API v1 untuk login/register/logout, daftar karya, detail karya, profil user, like/comment/bookmark, saldo top up, dan checkout top up.
 - Proxy gambar untuk cover, galeri, profil, gambar chapter, remote image, blur/lock state, dan watermark.
@@ -82,12 +83,21 @@ Area ini memerlukan login sebagai user.
 - `/me/cart`
 - `/me/follows`
 - `/topup`
+- `POST /cart/add/{id}`
+- `POST /cart/remove/{id}`
+- `POST /cart/checkout`
+- `GET /cart/download-all`
+- `GET /cart/download/{id}`
 - `POST /works/{id}/like`
 - `POST /works/{id}/comment`
 - `POST /works/{id}/unlock`
 - `POST /chapters/{chapterId}/unlock`
+- `POST /comments/{id}/delete`
 - `POST /bookmark/{id}`
+- `POST /bookmark/{id}/remove`
 - `POST /follow/{username}`
+- `POST /follow/{username}/remove`
+- `GET /follow/{username}/stats`
 - `GET /notifications/fetch`
 - `POST /notifications/read-all`
 - `POST /notifications/{id}/read`
@@ -112,9 +122,10 @@ Area ini memerlukan login sebagai creator.
 - `/creator/monetization/export/excel`
 - `/creator/monetization/export/pdf`
 - `/creator/monetization/receipt/{id}`
+- `/creator/stats/works/{id}`
 - `/creator/settings`
 
-Fitur creator mencakup draft/publish/archive/delete, upload cover dan galeri, chapter editor, chapter lock, pengaturan harga CC, status ongoing/ended, statistik karya, monetisasi, dan profil kreator.
+Fitur creator mencakup draft/publish/archive/delete, upload cover dan galeri, chapter editor, chapter lock, pengaturan harga CC, status ongoing/ended, statistik dashboard, statistik per karya, analitik engagement, analitik revenue/unlock, monetisasi, dan profil kreator.
 
 ### Admin Area
 
@@ -162,8 +173,8 @@ Endpoint utama:
 ### Cooling Credit (CC)
 
 - User melakukan top up dari paket CC yang tersedia.
-- CC digunakan untuk unlock karya, unlock chapter, checkout cart, dan download konten berbayar yang mendukung pembelian.
-- Transaksi dicatat sebagai `in` atau `out` dengan kategori seperti `topup`, `unlock`, `download`, dan `withdraw`.
+- CC digunakan untuk unlock karya, unlock chapter, checkout cart, dan download konten berbayar yang mendukung pembelian permanen.
+- Transaksi dicatat sebagai `in` atau `out` dengan kategori seperti `topup`, `unlock`, `chapter_unlock`, `purchase`, `work_purchase`, `download`, dan `withdraw`.
 - Kreator menerima saldo dari unlock/download karya dan dapat melihat riwayat monetisasi.
 - Admin dapat melihat statistik transaksi dan melakukan penyesuaian saldo CC user.
 
@@ -172,9 +183,27 @@ Endpoint utama:
 - Karya dapat disimpan sebagai draft atau langsung published.
 - Status publik yang tampil di explore adalah `published`, `curated`, dan `museum`.
 - Karya chapter-based mencakup text, novel, light novel, dan comic.
-- Karya image menggunakan galeri gambar, proxy image, watermark, blur lock, preview timer, dan download ZIP untuk konten gratis.
+- Karya image menggunakan galeri gambar, proxy image, watermark, blur lock, preview timer, dan download ZIP.
+- Karya text/novel/light novel/comic dapat diexport sebagai PDF setelah checkout/download valid.
 - Chapter dapat dikunci dengan harga CC masing-masing.
 - Harga karya mendukung `price` untuk akses/preview dan `purchase_price` untuk pembelian permanen.
+
+### Cart dan Download
+
+- User dapat memasukkan karya downloadable ke cart.
+- Checkout cart memotong saldo CC user dan mencatat transaksi keluar untuk pembeli.
+- Pendapatan dari pembelian/download dicatat sebagai transaksi masuk untuk kreator.
+- Setelah checkout, user diarahkan ke halaman download-all untuk mengunduh semua karya yang baru dibeli.
+- Karya gambar dikemas sebagai ZIP, sedangkan karya berbasis chapter dikemas menjadi PDF menggunakan Dompdf.
+- Download berbayar dicek ulang melalui riwayat transaksi agar file tidak bisa diambil tanpa checkout.
+
+### Statistik Kreator
+
+- Dashboard statistik kreator menampilkan total karya, karya published, follower, views, like, bookmark, comment, dan engagement.
+- Statistik bulanan membandingkan performa bulan berjalan dengan bulan sebelumnya.
+- Grafik pertumbuhan 30 hari mencakup like, bookmark, comment, revenue, dan unlock.
+- Statistik per karya mencakup quality score, performa interaksi, komentar terbaru, revenue, riwayat unlock, top chapter, dan tren pendapatan.
+- Breakdown tipe konten dan daftar karya teratas membantu kreator melihat format yang paling aktif.
 
 ### Notifikasi
 
@@ -313,5 +342,3 @@ NusaShare sudah memiliki struktur fitur yang cukup lengkap untuk platform konten
 - Contoh request/response API.
 - Panduan deployment produksi.
 - Panduan konfigurasi remote upload.
-
-# nusashare-v2

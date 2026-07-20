@@ -275,6 +275,92 @@ Lalu buka:
 http://localhost:8080
 ```
 
+## Cara/Panduan Menjalankan Website
+
+Panduan cepat untuk menjalankan NusaShare di lokal:
+
+1. Nyalakan Apache dan MySQL/MariaDB dari XAMPP.
+2. Pastikan folder proyek berada di `C:\xampp\htdocs\nusa`.
+3. Buat database sesuai konfigurasi `.env`, misalnya `nusashare`.
+4. Jalankan dependency dan migration:
+
+```bash
+composer install
+php spark migrate
+```
+
+5. Buka website melalui browser:
+
+```text
+http://localhost/nusa/
+```
+
+Jika memakai development server CodeIgniter, jalankan:
+
+```bash
+php spark serve
+```
+
+Lalu buka:
+
+```text
+http://localhost:8080
+```
+
+Route penting untuk demo:
+
+- Public/explore: `http://localhost/nusa/` dan `http://localhost/nusa/explore`
+- Login user: `http://localhost/nusa/login`
+- Register user: `http://localhost/nusa/register`
+- Login kreator: `http://localhost/nusa/creator/login`
+- Register kreator: `http://localhost/nusa/creator/register`
+- Dashboard admin: `http://localhost/nusa/alpha-admin`
+- Top up CC user: `http://localhost/nusa/topup`
+- Cart user: `http://localhost/nusa/me/cart`
+
+## Informasi Akun Demo
+
+Jika fitur login diperlukan oleh juri, siapkan akun demo berikut di database lokal sebelum presentasi. Project ini belum menyertakan seeder akun demo default, jadi kredensial di bawah dapat disesuaikan dengan data yang dibuat saat demo.
+
+| Role | URL Login | Email/Username | Password | Catatan |
+| --- | --- | --- | --- | --- |
+| User/Pembaca | `/login` | `demo_user` | `password-demo` | Untuk mencoba explore, like, bookmark, komentar, top up CC, cart, checkout, dan download. |
+| Kreator | `/creator/login` | `demo_creator` | `password-demo` | Untuk mencoba dashboard kreator, upload karya, chapter, galeri, statistik, dan monetisasi. |
+| Admin | `/alpha-admin` | `demo_admin` | `password-demo` | Untuk mencoba panel admin, user management, creator management, transaksi, top up, CMS, dan sistem. |
+
+Catatan untuk juri:
+
+- Akun demo sebaiknya dibuat dengan saldo CC yang cukup agar alur transaksi bisa dicoba tanpa setup tambahan.
+- Untuk demo unduhan berbayar, pastikan minimal ada satu karya `is_paid` dengan `purchase_price` atau `price` lebih dari 0.
+- Untuk demo kreator, pastikan akun kreator sudah memiliki minimal satu karya published dan beberapa chapter/gallery agar statistik lebih terlihat.
+
+## Alur Transaksi & Validasi Unduhan
+
+Alur pembelian/download menggunakan Cooling Credit (CC):
+
+1. User login sebagai pembaca.
+2. User melakukan top up di `/topup`.
+3. Sistem menambahkan saldo CC sesuai paket dan mencatat transaksi `in` kategori `topup`.
+4. User membuka detail karya dan menambahkan karya downloadable ke cart.
+5. Saat checkout cart, sistem menghitung total harga karya berbayar dari `purchase_price` atau fallback ke `price`.
+6. Jika saldo CC tidak cukup, user diarahkan ke halaman top up.
+7. Jika saldo cukup, sistem menjalankan transaksi database:
+   - saldo CC pembeli dikurangi;
+   - saldo CC kreator ditambah;
+   - transaksi pembeli dicatat sebagai `out` kategori `download`;
+   - transaksi kreator dicatat sebagai `in` kategori `download`;
+   - notifikasi pembelian dikirim ke kreator.
+8. Cart dikosongkan dan daftar karya yang baru dibeli disimpan sementara di session `pending_downloads`.
+9. User diarahkan ke `/cart/download-all` untuk melihat daftar file siap unduh.
+10. Saat user membuka `/cart/download/{id}`, sistem memvalidasi akses:
+    - karya harus ada;
+    - tipe karya harus termasuk `image`, `text`, `novel`, `light_novel`, atau `comic`;
+    - jika karya berbayar, harus ada riwayat transaksi pembeli dengan `user_id`, `reference_id` karya, kategori `download`, dan tipe `out`.
+11. Jika validasi gagal, sistem menolak unduhan dengan status 403.
+12. Jika validasi berhasil:
+    - karya gambar diunduh sebagai ZIP;
+    - karya berbasis chapter diunduh sebagai PDF menggunakan Dompdf.
+
 ## Testing
 
 Jalankan test dengan Composer:

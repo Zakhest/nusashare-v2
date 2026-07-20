@@ -20,7 +20,7 @@
 <body class="min-h-screen flex flex-col">
 
     <!-- Navbar Minimal -->
-    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 py-4 px-6">
+    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 py-3 px-4 sm:py-4 sm:px-6">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <a href="<?= base_url('explore') ?>" class="flex items-center gap-2 group">
                 <span class="material-symbols-outlined text-slate-400 group-hover:text-indigo-600 transition-colors">arrow_back</span>
@@ -44,18 +44,18 @@
         </div>
     </nav>
 
-    <main class="flex-1 max-w-5xl mx-auto w-full px-6 py-12">
+    <main class="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12">
         <!-- Hero Section -->
-        <div class="grid md:grid-cols-3 gap-12 items-start mb-16">
+        <div class="grid md:grid-cols-3 gap-6 sm:gap-10 md:gap-12 items-start mb-10 sm:mb-16">
             <div class="md:col-span-1">
-                <div class="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
+                <div class="aspect-[3/4] max-w-[240px] sm:max-w-none mx-auto rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border-4 border-white">
                     <?php 
                         $coverUrl = base_url('image/cover/' . $work['id']);
                         if (empty($work['cover_url'])) {
-                            $coverUrl = base_url('assets/img/default-cover.jpg');
+                            $coverUrl = base_url('assets/icon/logonuss.png');
                         }
                     ?>
-                    <img src="<?= $coverUrl ?>" alt="Cover" class="w-full h-full object-cover" draggable="false" oncontextmenu="return false;">
+                    <img src="<?= $coverUrl ?>" alt="Cover" class="w-full h-full object-cover" loading="eager" decoding="async" draggable="false" oncontextmenu="return false;">
                 </div>
             </div>
             <div class="md:col-span-2">
@@ -78,9 +78,9 @@
                     <?php endif; ?>
                 </div>
 
-                <h1 class="text-4xl md:text-5xl font-black text-slate-900 mb-6 leading-tight"><?= esc($work['title']) ?></h1>
+                <h1 class="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 mb-5 sm:mb-6 leading-tight"><?= esc($work['title']) ?></h1>
                 
-                <div class="flex items-center gap-4 mb-8">
+                <div class="flex flex-wrap items-center gap-4 mb-8">
                     <a href="<?= base_url('user/' . $work['creator_name']) ?>" class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xl hover:scale-105 transition-transform">
                         <?= strtoupper(substr($work['creator_name'], 0, 1)) ?>
                     </a>
@@ -88,18 +88,18 @@
                         <p class="text-xs text-slate-400 font-medium uppercase tracking-widest">Kreator</p>
                         <a href="<?= base_url('user/' . $work['creator_name']) ?>" class="font-bold text-slate-900 hover:text-indigo-600 transition-colors block"><?= esc($work['creator_name']) ?></a>
                     </div>
-                    <div class="ml-auto flex items-center gap-4">
-                        <div class="text-center pr-4 border-r border-slate-100">
+                    <div class="w-full sm:w-auto sm:ml-auto grid grid-cols-3 gap-3 sm:flex sm:items-center sm:gap-4">
+                        <div class="text-center sm:pr-4 sm:border-r border-slate-100 bg-white sm:bg-transparent rounded-2xl sm:rounded-none border sm:border-0 border-slate-100 p-3 sm:p-0">
                             <span class="block text-xl font-bold text-slate-900" data-view-count><?= number_format($work['view_count']) ?></span>
                             <span class="text-[10px] text-slate-400 uppercase tracking-widest">Tayangan</span>
                         </div>
-                        <button id="likeBtn" class="flex flex-col items-center gap-1 group transition-all" data-work-id="<?= $work['id'] ?>">
+                        <button id="likeBtn" class="flex flex-col items-center gap-1 group transition-all bg-white sm:bg-transparent rounded-2xl border sm:border-0 border-slate-100 p-3 sm:p-0" data-work-id="<?= $work['id'] ?>">
                             <span class="material-symbols-outlined <?= $hasLiked ? 'text-red-500 FILL' : 'text-slate-400' ?> group-hover:scale-110 transition-transform" id="likeIcon" style="<?= $hasLiked ? 'font-variation-settings: \'FILL\' 1' : '' ?>">favorite</span>
                             <span class="text-[10px] font-bold <?= $hasLiked ? 'text-red-500' : 'text-slate-400' ?>" id="likeCount"><?= number_format($likeCount) ?></span>
                         </button>
                         <?php if (session()->get('isLoggedIn')): ?>
                         <button id="wishlistBtn"
-                            class="flex flex-col items-center gap-1 group transition-all"
+                            class="flex flex-col items-center gap-1 group transition-all bg-white sm:bg-transparent rounded-2xl border sm:border-0 border-slate-100 p-3 sm:p-0"
                             data-work-id="<?= $work['id'] ?>"
                             data-bookmarked="<?= $hasBookmarked ? '1' : '0' ?>">
                             <span class="material-symbols-outlined group-hover:scale-110 transition-transform <?= $hasBookmarked ? 'text-indigo-600' : 'text-slate-400' ?>"
@@ -112,7 +112,7 @@
                             </span>
                         </button>
                         <?php endif; ?>
-                        <button id="shareBtn" class="flex flex-col items-center gap-1 group transition-all">
+                        <button id="shareBtn" class="flex flex-col items-center gap-1 group transition-all bg-white sm:bg-transparent rounded-2xl border sm:border-0 border-slate-100 p-3 sm:p-0">
                             <span class="material-symbols-outlined text-slate-400 group-hover:text-indigo-600 group-hover:scale-110 transition-transform">share</span>
                             <span class="text-[10px] font-bold text-slate-400">Bagikan</span>
                         </button>
@@ -201,7 +201,7 @@
                 </div>
 
             <?php elseif ($work['content_type'] === 'image'): ?>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 images-grid">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 images-grid">
                     <?php if (!empty($images)): ?>
                         <?php foreach ($images as $img): ?>
                             <div class="aspect-[4/5] rounded-2xl overflow-hidden bg-slate-100 shadow-md border border-slate-100">
@@ -220,6 +220,7 @@
                                         data-img-id="<?= $img['id'] ?>"
                                         data-img-url="<?= $imgUrl ?>"
                                         loading="lazy"
+                                        decoding="async"
                                         draggable="false"
                                         oncontextmenu="return false;"
                                         onclick="openLightbox(<?= $img['id'] ?>)">
@@ -264,10 +265,10 @@
                 </div>
 
                 <!-- Action Button for Image Works -->
-                <div class="mt-12 flex justify-center gap-4">
+                <div class="mt-10 sm:mt-12 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
                     <?php if (session()->get('isLoggedIn')): ?>
                         <button id="wishlistBtnImg"
-                            class="flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-sm transition-all group shadow-sm border <?= $hasBookmarked ? 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100' ?>"
+                            class="w-full sm:w-auto justify-center flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-sm transition-all group shadow-sm border <?= $hasBookmarked ? 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100' ?>"
                             data-work-id="<?= $work['id'] ?>"
                             data-bookmarked="<?= $hasBookmarked ? '1' : '0' ?>">
                             <span class="material-symbols-outlined group-hover:scale-110 transition-transform" id="wishlistIconImg"
@@ -277,13 +278,13 @@
                             <span id="wishlistLabelImg"><?= $hasBookmarked ? 'Tersimpan di Wishlist' : 'Tambahkan ke Wishlist' ?></span>
                         </button>
                     <?php else: ?>
-                        <a href="<?= base_url('login') ?>" class="bg-indigo-50 border border-indigo-200 text-indigo-600 px-8 py-3 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-all flex items-center gap-2 group shadow-sm">
+                        <a href="<?= base_url('login') ?>" class="w-full sm:w-auto justify-center bg-indigo-50 border border-indigo-200 text-indigo-600 px-8 py-3 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-all flex items-center gap-2 group shadow-sm">
                             <span class="material-symbols-outlined group-hover:scale-110 transition-transform">bookmark_add</span>
                             Login untuk Simpan ke Wishlist
                         </a>
                     <?php endif; ?>
                     <?php if (!$work['is_paid']): ?>
-                        <a href="<?= base_url('works/' . $work['id'] . '/download') ?>" class="btn-primary px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg hover:shadow-indigo-200/50 transition-all group">
+                        <a href="<?= base_url('works/' . $work['id'] . '/download') ?>" class="w-full sm:w-auto justify-center btn-primary px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg hover:shadow-indigo-200/50 transition-all group">
                             <span class="material-symbols-outlined group-hover:-translate-y-1 transition-transform">download</span>
                             Download Gambar (Gratis)
                         </a>
@@ -502,11 +503,11 @@
     })();
     </script>
 
-    <!-- 4-Menit View Threshold System -->
+    <!-- 2-Menit View Threshold System -->
     <script>
     (function () {
         const WORK_ID      = <?= (int)$work['id'] ?>;
-        const THRESHOLD_MS = 2 * 60 * 1000; // 4 menit
+        const THRESHOLD_MS = 2 * 60 * 1000; // 2 menit
         const BASE_URL     = '<?= rtrim(base_url(), '/') ?>';
         const LS_KEY       = 'nusa_view_' + WORK_ID;
         const VIEW_URL     = BASE_URL + '/works/' + WORK_ID + '/view';
@@ -546,7 +547,7 @@
             });
         }, THRESHOLD_MS);
 
-        // Batalkan timer jika user meninggalkan halaman sebelum 4 menit
+        // Batalkan timer jika user meninggalkan halaman sebelum 2 menit
         window.addEventListener('beforeunload', function () {
             clearTimeout(timer);
         });

@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\UserModel;
 use App\Models\CreditModel;
 use App\Models\CreatorProfileModel;
+use App\Services\NotificationService;
 
 class TopupController extends BaseController
 {
@@ -85,6 +86,20 @@ class TopupController extends BaseController
                 'balance' => $package['cc']
             ]);
         }
+
+        // Record top-up in transaction history
+        $transactionModel = new \App\Models\TransactionModel();
+        $transactionModel->record(
+            $userId,
+            $package['cc'],
+            'in',
+            'topup',
+            null,
+            'Top Up via Paket ' . $package['label']
+        );
+
+        // Kirim notifikasi topup berhasil ke user
+        (new NotificationService())->notifyTopup($userId, (int)$package['cc'], $package['label']);
 
         return redirect()->to('topup')->with('success', 'Top Up Berhasil! ' . number_format($package['cc']) . ' CC telah ditambahkan ke akun Anda.');
     }

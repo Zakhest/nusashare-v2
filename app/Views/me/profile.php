@@ -223,7 +223,7 @@
                         <?php if ($creatorProfile): ?>
                             <a href="<?= base_url('creator/dashboard') ?>" class="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-xs border border-indigo-100 hover:bg-indigo-100 transition-all text-center">
                                 <span class="material-symbols-outlined text-sm">potted_plant</span>
-                                Login sebagai <?= $creatorProfile['display_name'] ?>
+                                Creator Page <?= $creatorProfile['display_name'] ?>
                             </a>
                         <?php else: ?>
                             <button onclick="openCreatorModal()" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-all text-center">
@@ -234,7 +234,7 @@
                     </div>
 
                     <!-- Additional Info -->
-                    <div class="grid md:grid-cols-2 gap-8">
+                    <div class="grid md:grid-cols-3 gap-6">
                         <div class="card p-6 bg-slate-900 text-white">
                             <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
                                 <span class="material-symbols-outlined text-indigo-400">auto_awesome</span>
@@ -247,6 +247,31 @@
                                     <span class="text-xs bg-white/20 px-2 py-0.5 rounded-full"><?= $user['starsoul_status'] ?? 'Anggota NusaShare' ?></span>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- User ID / PDF Password Card -->
+                        <div class="card p-6 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
+                            <h3 class="font-bold text-slate-900 mb-1 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-amber-500" style="font-variation-settings:'FILL' 1">lock</span>
+                                User ID & Password PDF
+                            </h3>
+                            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                                User ID ini digunakan sebagai <strong>password</strong> untuk membuka file PDF yang Anda beli di NusaShare.
+                            </p>
+                            <div class="bg-white border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-2 shadow-sm">
+                                <span class="material-symbols-outlined text-amber-500 text-[18px]">badge</span>
+                                <span id="profile-user-id" class="font-mono font-bold text-slate-900 tracking-widest text-sm flex-1"><?= htmlspecialchars($user['id'] ?? '') ?></span>
+                                <button
+                                    onclick="copyProfileUserId()"
+                                    title="Salin User ID"
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                                >
+                                    <span class="material-symbols-outlined text-[18px]" id="profile-copy-icon">content_copy</span>
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-3">
+                                Jangan bagikan User ID ini kepada orang lain.
+                            </p>
                         </div>
 
                         <div class="card p-6 border-dashed border-2 flex flex-col justify-center items-center text-center">
@@ -389,6 +414,19 @@ function closeCropModal() {
     cropModal.classList.add('hidden');
     cropModal.classList.remove('flex');
     if (cropper) { cropper.destroy(); cropper = null; }
+}
+
+function copyProfileUserId() {
+    const id = document.getElementById('profile-user-id').textContent.trim();
+    navigator.clipboard.writeText(id).then(() => {
+        const icon = document.getElementById('profile-copy-icon');
+        icon.textContent = 'check';
+        icon.style.color = '#f59e0b';
+        setTimeout(() => {
+            icon.textContent = 'content_copy';
+            icon.style.color = '';
+        }, 2000);
+    });
 }
 </script>
 <script>

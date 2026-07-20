@@ -178,6 +178,7 @@
                             $t          = $item['content_type'];
                             $dlFormat   = ($t === 'image') ? 'ZIP' : 'PDF';
                             $dlIcon     = ($t === 'image') ? 'photo_library' : 'picture_as_pdf';
+                            $itemPrice  = ((int)($item['purchase_price'] ?? 0) > 0) ? (int)$item['purchase_price'] : (int)$item['price'];
                             $typeLabel  = match(true) {
                                 $t === 'novel'       => 'Novel',
                                 $t === 'light_novel' => 'Light Novel',
@@ -196,7 +197,7 @@
                                 <div class="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-100">
                                     <img src="<?= $coverUrl ?>" alt="<?= htmlspecialchars($item['title']) ?>"
                                          class="w-full h-full object-cover"
-                                         onerror="this.src='<?= base_url('assets/img/default-cover.jpg') ?>'"
+                                         onerror="this.src='<?= base_url('assets/icon/logonuss.png') ?>'"
                                          loading="lazy">
                                 </div>
 
@@ -211,7 +212,7 @@
                                             <?= $dlFormat ?>
                                         </span>
                                         <?php if ($item['is_paid']): ?>
-                                            <span class="text-[10px] font-black px-2 py-0.5 rounded-md badge-paid"><?= number_format($item['price']) ?> CC</span>
+                                            <span class="text-[10px] font-black px-2 py-0.5 rounded-md badge-paid"><?= number_format($itemPrice) ?> CC</span>
                                         <?php else: ?>
                                             <span class="text-[10px] font-black px-2 py-0.5 rounded-md badge-free">GRATIS</span>
                                         <?php endif; ?>
@@ -230,7 +231,7 @@
                                         </a>
                                     <?php else: ?>
                                         <span class="text-sm font-bold text-slate-900">
-                                            <?= $item['is_paid'] ? number_format($item['price']) . ' CC' : 'Gratis' ?>
+                                            <?= $item['is_paid'] ? number_format($itemPrice) . ' CC' : 'Gratis' ?>
                                         </span>
                                     <?php endif; ?>
                                     <button onclick="removeFromCart(<?= $item['work_id'] ?>)"
@@ -260,7 +261,8 @@
                                     <div class="flex justify-between items-center text-sm">
                                         <span class="text-slate-600 truncate max-w-[160px]"><?= htmlspecialchars($item['title']) ?></span>
                                         <span class="font-bold text-slate-900 flex-shrink-0 ml-2">
-                                            <?= $item['is_paid'] ? number_format($item['price']) . ' CC' : '<span class="text-emerald-600 text-xs font-black">GRATIS</span>' ?>
+                                            <?php $summaryPrice = ((int)($item['purchase_price'] ?? 0) > 0) ? (int)$item['purchase_price'] : (int)$item['price']; ?>
+                                            <?= $item['is_paid'] ? number_format($summaryPrice) . ' CC' : '<span class="text-emerald-600 text-xs font-black">GRATIS</span>' ?>
                                         </span>
                                     </div>
                                     <?php endforeach; ?>

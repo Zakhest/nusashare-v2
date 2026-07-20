@@ -79,6 +79,107 @@
         #cart-toast {
             transition: all 0.3s ease;
         }
+
+        @media (max-width: 640px) {
+            .wishlist-topbar {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .wishlist-profile-copy {
+                display: none;
+            }
+
+            .wishlist-header {
+                padding: 2.25rem 1.25rem 1rem;
+            }
+
+            .wishlist-title {
+                font-size: 1.6rem;
+                line-height: 1.15;
+            }
+
+            .wishlist-subtitle {
+                font-size: 0.88rem;
+                line-height: 1.55;
+            }
+
+            .wishlist-main {
+                padding: 1rem 1rem 9.5rem;
+            }
+
+            .wishlist-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.875rem;
+            }
+
+            .art-card {
+                border-radius: 0.9rem;
+            }
+
+            .wishlist-cover {
+                aspect-ratio: 3 / 4;
+            }
+
+            .wishlist-card-body {
+                padding: 0.75rem;
+            }
+
+            .wishlist-remove {
+                opacity: 1;
+            }
+
+            .wishlist-card-title {
+                font-size: 0.86rem;
+                line-height: 1.25;
+                white-space: normal;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            .cart-btn {
+                min-height: 2.25rem;
+                padding-left: 0.45rem;
+                padding-right: 0.45rem;
+            }
+
+            #cart-cta-bar {
+                bottom: calc(4rem + env(safe-area-inset-bottom));
+                z-index: 40;
+                pointer-events: none;
+            }
+
+            #cart-cta-bar > div {
+                padding: 0 1rem;
+            }
+
+            #cart-cta-bar .cart-cta-panel {
+                pointer-events: auto;
+                border-radius: 1rem;
+                padding: 0.7rem;
+                gap: 0.65rem;
+                box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22);
+            }
+
+            #cart-cta-bar .cart-cta-icon {
+                width: 2.25rem;
+                height: 2.25rem;
+                border-radius: 0.75rem;
+            }
+
+            #cart-cta-bar .cart-cta-copy {
+                display: none;
+            }
+
+            #cart-cta-btn {
+                flex: 1 1 auto;
+                justify-content: center;
+                padding: 0.75rem 0.9rem;
+                border-radius: 0.85rem;
+            }
+        }
     </style>
 </head>
 <body class="bg-[#F8FAFC] flex h-screen overflow-hidden">
@@ -93,7 +194,7 @@
     <div class="flex-1 flex flex-col h-full overflow-hidden">
 
         <!-- Top Bar -->
-        <nav class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-40">
+        <nav class="wishlist-topbar bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-40">
             <div class="w-full flex items-center justify-between">
                 <div class="flex items-center gap-6">
                     <h2 class="text-lg font-bold text-slate-900 hidden lg:block">Wishlist Saya</h2>
@@ -141,7 +242,7 @@
                         <?php endif; ?>
                     </a>
                     <div class="flex items-center gap-3 border-l pl-6 border-slate-100">
-                        <div class="text-right">
+                        <div class="wishlist-profile-copy text-right">
                             <p class="text-xs font-bold text-slate-900"><?= $username ?></p>
                             <p class="text-[10px] text-slate-500"><?= $user['starsoul_status'] ?? 'Anggota NusaShare' ?></p>
                         </div>
@@ -156,14 +257,14 @@
         <!-- Content Container -->
         <div class="flex-1 overflow-y-auto">
             
-            <header class="pt-12 pb-8 px-8">
+            <header class="wishlist-header pt-12 pb-8 px-8">
                 <div class="max-w-7xl mx-auto flex items-end justify-between gap-4 flex-wrap">
                     <div>
-                        <h1 class="text-3xl font-bold text-[#0F172A] mb-2">Wishlist Karya Anda</h1>
-                        <p class="text-[#64748B]">Semua karya yang telah Anda simpan ke Wishlist. Tambahkan ke Keranjang untuk mengunduh.</p>
+                        <h1 class="wishlist-title text-3xl font-bold text-[#0F172A] mb-2">Wishlist Karya Anda</h1>
+                        <p class="wishlist-subtitle text-[#64748B]">Semua karya yang telah Anda simpan ke Wishlist. Tambahkan ke Keranjang untuk mengunduh.</p>
                     </div>
                     <?php if ($cartCount > 0): ?>
-                    <a href="<?= base_url('me/cart') ?>" class="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200">
+                    <a href="<?= base_url('me/cart') ?>" class="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200">
                         <span class="material-symbols-outlined text-lg">shopping_cart</span>
                         Lihat Keranjang (<?= $cartCount ?>)
                     </a>
@@ -171,15 +272,15 @@
                 </div>
             </header>
 
-            <main class="max-w-7xl mx-auto px-8 py-8 min-h-screen pb-36">
-                <div id="art-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+            <main class="wishlist-main max-w-7xl mx-auto px-8 py-8 min-h-screen pb-36">
+                <div id="art-grid" class="wishlist-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
                     <?php if (!empty($works)): ?>
                         <?php foreach ($works as $index => $work): ?>
                             <?php 
                                 $delay     = $index * 50; 
                                 $coverUrl  = base_url('image/cover/' . $work['id']);
                                 if (empty($work['cover_url'])) {
-                                    $coverUrl = base_url('assets/img/default-cover.jpg');
+                                    $coverUrl = base_url('assets/icon/logonuss.png');
                                 }
                                 $t = $work['content_type'];
                                 $typeLabel = match(true) {
@@ -193,12 +294,13 @@
                                 $dlFormat = ($t === 'image') ? 'ZIP' : 'PDF';
                                 $dlIcon   = ($t === 'image') ? 'photo_library' : 'picture_as_pdf';
                                 $inCart   = in_array($work['id'], $cartWorkIds);
+                                $buyPrice = ((int)($work['purchase_price'] ?? 0) > 0) ? (int)$work['purchase_price'] : (int)$work['price'];
                             ?>
                             <div class="art-card group opacity-0 translate-y-4 animate-in"
                                  style="animation-delay: <?= $delay ?>ms;"
                                  data-work-id="<?= $work['id'] ?>">
-                                <div class="relative aspect-[4/3] bg-slate-100 overflow-hidden border-b border-slate-100">
-                                    <img src="<?= $coverUrl ?>" alt="<?= htmlspecialchars($work['title']) ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+                                <div class="wishlist-cover relative aspect-[4/3] bg-slate-100 overflow-hidden border-b border-slate-100">
+                                    <img src="<?= $coverUrl ?>" alt="<?= htmlspecialchars($work['title']) ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" decoding="async">
 
                                     <!-- Top-left badges -->
                                     <div class="absolute top-3 left-3 flex flex-col gap-1.5">
@@ -214,7 +316,7 @@
                                     <!-- Price badge bottom-left -->
                                     <?php if ($work['is_paid']): ?>
                                         <div class="absolute bottom-3 left-3 bg-amber-500 text-white px-2 py-1 rounded-md text-[10px] font-black shadow">
-                                            <?= number_format($work['price']) ?> CC
+                                            <?= number_format($buyPrice) ?> CC
                                         </div>
                                     <?php else: ?>
                                         <div class="absolute bottom-3 left-3 bg-emerald-500 text-white px-2 py-1 rounded-md text-[10px] font-black shadow">
@@ -225,7 +327,7 @@
                                     <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
 
                                     <!-- Hapus dari Wishlist -->
-                                    <div class="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div class="wishlist-remove absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <form action="<?= base_url('bookmark/' . $work['id'] . '/remove') ?>" method="POST" onsubmit="return confirm('Hapus dari Wishlist?')">
                                             <button type="submit" class="w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-red-500 shadow-sm hover:bg-red-50 transition-colors" title="Hapus dari Wishlist">
                                                 <span class="material-symbols-outlined text-[18px]">bookmark_remove</span>
@@ -234,8 +336,8 @@
                                     </div>
                                 </div>
 
-                                <div class="p-4">
-                                    <h3 class="font-bold text-[#0F172A] text-base leading-tight mb-2 truncate group-hover:text-[#4F46E5] transition-colors"><?= htmlspecialchars($work['title']) ?></h3>
+                                <div class="wishlist-card-body p-4">
+                                    <h3 class="wishlist-card-title font-bold text-[#0F172A] text-base leading-tight mb-2 truncate group-hover:text-[#4F46E5] transition-colors"><?= htmlspecialchars($work['title']) ?></h3>
                                     <div class="flex items-center gap-2 mb-3">
                                         <div class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-500">
                                             <?= strtoupper(substr($work['creator_name'] ?? 'U', 0, 1)) ?>
@@ -304,11 +406,11 @@
     <?php if (!empty($works)): ?>
     <div id="cart-cta-bar" class="fixed bottom-0 left-0 right-0 z-50 lg:left-64">
         <div class="px-8 pb-6 pt-2 max-w-7xl mx-auto">
-            <div class="bg-slate-900 rounded-2xl shadow-2xl shadow-slate-900/40 px-6 py-4 flex items-center gap-4">
-                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+            <div class="cart-cta-panel bg-slate-900 rounded-2xl shadow-2xl shadow-slate-900/40 px-6 py-4 flex items-center gap-4">
+                <div class="cart-cta-icon w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
                     <span class="material-symbols-outlined text-white text-xl">shopping_cart</span>
                 </div>
-                <div class="flex-1 min-w-0">
+                <div class="cart-cta-copy flex-1 min-w-0">
                     <p class="text-white font-bold text-sm" id="cta-text">
                         <?php if ($cartCount > 0): ?>
                             <span class="text-indigo-400"><?= $cartCount ?> item</span> siap diunduh di Keranjang

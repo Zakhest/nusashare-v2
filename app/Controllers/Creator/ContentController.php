@@ -9,6 +9,32 @@ use App\Models\CreatorProfileModel;
 
 class ContentController extends BaseController
 {
+    private function guardCreator()
+    {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'creator') {
+            return redirect()->to(base_url('creator/login'));
+        }
+        return null;
+    }
+
+    private function getOwnedWork(int $id, string $userId): ?array
+    {
+        $work = (new ExploreContentModel())->find($id);
+
+        if (!$work || (string) $work['creator_id'] !== (string) $userId) {
+            return null;
+        }
+
+        return $work;
+    }
+
+    private function deleteRowsIfTableExists($db, string $table, string $field, int $id): void
+    {
+        if ($db->tableExists($table)) {
+            $db->table($table)->where($field, $id)->delete();
+        }
+    }
+
     public function index()
     {
         // Check if logged in as creator
@@ -88,6 +114,8 @@ class ContentController extends BaseController
             'status'       => 'required|in_list[draft,published]',
             'access_type'  => 'required|in_list[full,chapter]',
             'work_status'  => 'required|in_list[ongoing,ended]',
+            'price'        => 'permit_empty|integer|greater_than_equal_to[0]',
+            'purchase_price' => 'permit_empty|integer|greater_than_equal_to[0]',
             'cover'        => 'is_image[cover]|max_size[cover,2048]|ext_in[cover,jpg,jpeg,png,webp]'
         ];
 
@@ -103,6 +131,7 @@ class ContentController extends BaseController
         $data = [
             'creator_id'   => $userId,
             'title'        => $this->request->getPost('title'),
+            'genre'        => $this->request->getPost('genre'),
             'description'  => $this->request->getPost('description'),
             'content_type' => $this->request->getPost('content_type'),
             'status'       => $this->request->getPost('status'),
@@ -110,6 +139,7 @@ class ContentController extends BaseController
             'work_status'  => $this->request->getPost('work_status'),
             'is_paid'      => $this->request->getPost('is_paid') ? 1 : 0,
             'price'        => (int) $this->request->getPost('price'),
+            'purchase_price' => (int) $this->request->getPost('purchase_price'),
             'watermark_text' => $this->request->getPost('watermark_text'),
             'timer_duration' => (int) $this->request->getPost('timer_duration'),
             'is_locked'    => 0, // Default for new works
@@ -228,6 +258,8 @@ class ContentController extends BaseController
             'status'       => 'required|in_list[draft,published]',
             'access_type'  => 'required|in_list[full,chapter]',
             'work_status'  => 'required|in_list[ongoing,ended]',
+            'price'        => 'permit_empty|integer|greater_than_equal_to[0]',
+            'purchase_price' => 'permit_empty|integer|greater_than_equal_to[0]',
             'cover'        => 'is_image[cover]|max_size[cover,3048]|ext_in[cover,jpg,jpeg,png,webp]',
         ];
 
@@ -237,6 +269,7 @@ class ContentController extends BaseController
 
         $updateData = [
             'title'        => $this->request->getPost('title'),
+            'genre'        => $this->request->getPost('genre'),
             'description'  => $this->request->getPost('description'),
             'content_type' => $this->request->getPost('content_type'),
             'status'       => $this->request->getPost('status'),
@@ -244,6 +277,7 @@ class ContentController extends BaseController
             'work_status'  => $this->request->getPost('work_status'),
             'is_paid'      => $this->request->getPost('is_paid') ? 1 : 0,
             'price'        => (int) $this->request->getPost('price'),
+            'purchase_price' => (int) $this->request->getPost('purchase_price'),
             'watermark_text' => $this->request->getPost('watermark_text'),
             'timer_duration' => (int) $this->request->getPost('timer_duration'),
         ];
@@ -289,117 +323,90 @@ class ContentController extends BaseController
                          ->with('message', 'Karya berhasil diperbarui!');
     }
 
-    public function stats($id)
+
+    public function publish($id)
     {
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'creator') {
-            return redirect()->to(base_url('creator/login'));
-        }
+        if ($r = $this->guardCreator()) return $r;
 
-        $userId   = session()->get('userId');
-        $username = session()->get('username');
+        $userId = session()->get('userId');
+        $work   = $this->getOwnedWork((int) $id, $userId);
 
-        $contentModel       = new ExploreContentModel();
-        $userModel          = new UserModel();
-        $creatorProfileModel = new CreatorProfileModel();
-
-        // Fetch work and verify ownership
-        $work = $contentModel->find($id);
-
-        if (!$work || $work['creator_id'] !== $userId) {
+        if (!$work) {
             return redirect()->to(base_url('creator/content'))
                              ->with('errors', ['auth' => 'Karya tidak ditemukan atau kamu bukan pemiliknya.']);
         }
 
-        $user          = $userModel->find($userId);
-        $creatorProfile = $creatorProfileModel->find($userId);
+        (new ExploreContentModel())->update((int) $id, ['status' => 'published']);
 
-        // Models for interaction
-        $likeModel = new \App\Models\LikeModel();
-        $commentModel = new \App\Models\CommentModel();
-        $bookmarkModel = new \App\Models\BookmarkModel();
+        return redirect()->to(base_url('creator/content'))
+                         ->with('message', 'Karya berhasil diterbitkan.');
+    }
 
-        $views = $work['view_count'] ?? 0;
-        $likes = $likeModel->where('work_id', $id)->countAllResults();
-        $comments = $commentModel->where('work_id', $id)->countAllResults();
-        $bookmarks = $bookmarkModel->where('work_id', $id)->countAllResults();
+    public function archive($id)
+    {
+        if ($r = $this->guardCreator()) return $r;
 
-        // Calculate Quality Score for this work (Max 5.0)
-        $qualityScore = 0.0;
-        if ($views > 0) {
-            $interactionRate = ($likes + $comments * 2 + $bookmarks * 3) / $views;
-            $score = 3.5 + ($interactionRate * 15);
-            $qualityScore = min(5.0, max(1.0, floatval($score)));
+        $userId = session()->get('userId');
+        $work   = $this->getOwnedWork((int) $id, $userId);
+
+        if (!$work) {
+            return redirect()->to(base_url('creator/content'))
+                             ->with('errors', ['auth' => 'Karya tidak ditemukan atau kamu bukan pemiliknya.']);
         }
 
-        // Distribution Data for chart
-        $distributionData = [
-            max(0, $views - ($bookmarks + $likes + $comments)), // Pembaca Biasa
-            $likes,
-            $bookmarks,
-            $comments
-        ];
-        
-        if (array_sum($distributionData) == 0) {
-            $distributionData = [1, 0, 0, 0];
+        (new ExploreContentModel())->update((int) $id, ['status' => 'draft']);
+
+        return redirect()->to(base_url('creator/content'))
+                         ->with('message', 'Karya berhasil ditarik dan kembali menjadi draft.');
+    }
+
+    public function destroy($id)
+    {
+        if ($r = $this->guardCreator()) return $r;
+
+        $userId       = session()->get('userId');
+        $contentModel = new ExploreContentModel();
+        $work         = $this->getOwnedWork((int) $id, $userId);
+
+        if (!$work) {
+            return redirect()->to(base_url('creator/content'))
+                             ->with('errors', ['auth' => 'Karya tidak ditemukan atau kamu bukan pemiliknya.']);
         }
 
-        // Growth Data (Simulated for this work)
-        $growthData = [];
-        $baseDaily = $views > 0 ? ceil($views / 14) : 0; 
-        for ($i = 6; $i >= 0; $i--) {
-            // Generate some random fluctuation
-            $fluctuation = $baseDaily > 0 ? rand(-intval($baseDaily * 0.2), intval($baseDaily * 0.4)) : 0;
-            $val = max(0, $baseDaily + $fluctuation - ($i * intval($baseDaily * 0.1)));
-            $growthData[] = $val;
-        }
+        $db = \Config\Database::connect();
+        $db->transStart();
 
-        // Calculate Income
-        $totalIncome = 0;
-        if ($work['content_type'] === 'text') {
-            // For text works, sum up (unlocked_chapters * chapter price)
-            $chapterModel = new \App\Models\ChapterModel();
-            $unlockedChapterModel = new \App\Models\UnlockedChapterModel();
-            
-            $chapters = $chapterModel->where('work_id', $id)->where('is_locked', 1)->findAll();
-            foreach ($chapters as $ch) {
-                if ($ch['price'] > 0) {
-                    $unlockCount = $unlockedChapterModel->where('chapter_id', $ch['id'])->countAllResults();
-                    $totalIncome += ($unlockCount * $ch['price']);
-                }
+        $this->deleteRowsIfTableExists($db, 'cart_items', 'work_id', (int) $id);
+        $this->deleteRowsIfTableExists($db, 'bookmarks', 'work_id', (int) $id);
+        $this->deleteRowsIfTableExists($db, 'likes', 'work_id', (int) $id);
+        $this->deleteRowsIfTableExists($db, 'comments', 'work_id', (int) $id);
+        $this->deleteRowsIfTableExists($db, 'reading_history', 'work_id', (int) $id);
+        $this->deleteRowsIfTableExists($db, 'work_images', 'work_id', (int) $id);
+
+        $chapterIds = $db->table('chapters')
+                         ->select('id')
+                         ->where('work_id', (int) $id)
+                         ->get()
+                         ->getResultArray();
+        $chapterIds = array_column($chapterIds, 'id');
+
+        if (!empty($chapterIds)) {
+            if ($db->tableExists('unlocked_chapters')) {
+                $db->table('unlocked_chapters')->whereIn('chapter_id', $chapterIds)->delete();
             }
-        } elseif ($work['content_type'] === 'image' && $work['is_paid']) {
-            // For image works, since we don't have an explicit unlock log table yet (assuming sessions or similar unlock logic),
-            // We can estimate based on a percentage of views or likes, or if we had a transactions table we'd use that.
-            // Let's assume 10% of total views decided to unlock the image gallery as a rough estimation for the demo
-            $estimatedUnlocks = floor($views * 0.1);
-            $totalIncome = $estimatedUnlocks * $work['price'];
+            $db->table('chapters')->where('work_id', (int) $id)->delete();
         }
 
-        // Fetch Recent Comments
-        $recentComments = $commentModel->getByWork($id);
-        // Only limit to top 10 for the stats view
-        $recentComments = array_slice($recentComments, 0, 10);
+        $contentModel->delete((int) $id);
 
-        $data = [
-            'title'          => 'Statistik Karya - NusaShare',
-            'username'       => $username,
-            'user'           => $user,
-            'creatorProfile' => $creatorProfile,
-            'work'           => $work,
-            'stats'          => [
-                'views'         => $views,
-                'likes'         => $likes,
-                'comments'      => $comments,
-                'bookmarks'     => $bookmarks,
-                'quality_score' => number_format($qualityScore, 1),
-                'total_income'  => $totalIncome
-            ],
-            'distributionData' => $distributionData,
-            'growthData'       => $growthData,
-            'recentComments'   => $recentComments,
-            'activePage'     => 'content',
-        ];
+        $db->transComplete();
 
-        return view('creator/content/stats', $data);
+        if (!$db->transStatus()) {
+            return redirect()->to(base_url('creator/content'))
+                             ->with('errors', ['db' => 'Karya gagal dihapus. Coba lagi nanti.']);
+        }
+
+        return redirect()->to(base_url('creator/content'))
+                         ->with('message', 'Karya berhasil dihapus.');
     }
 }

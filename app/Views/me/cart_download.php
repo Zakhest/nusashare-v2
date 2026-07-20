@@ -155,6 +155,27 @@
                     <?php endforeach; ?>
                 </div>
 
+                <!-- PDF Ownership Info Box -->
+                <div class="mt-5 bg-indigo-500/10 border border-indigo-400/30 rounded-2xl p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-indigo-400/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <span class="material-symbols-outlined text-indigo-300 text-[18px]" style="font-variation-settings:'FILL' 1">verified_user</span>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-indigo-300 font-bold text-sm mb-1">Identitas pembeli tercetak di cover PDF</p>
+                            <p class="text-indigo-200/70 text-xs leading-relaxed">Setiap file PDF berisi halaman cover dengan nama akun dan User ID Anda sebagai tanda kepemilikan.</p>
+                            <div class="mt-3 flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                                <span class="material-symbols-outlined text-indigo-300 text-[16px]">badge</span>
+                                <span class="text-white/50 text-xs">User ID kamu:</span>
+                                <span class="text-white font-mono font-bold text-sm tracking-widest" id="pdf-user-id"><?= htmlspecialchars((string) session()->get('userId')) ?></span>
+                                <button onclick="copyUserId()" title="Salin" class="ml-auto text-white/30 hover:text-indigo-300 transition-colors">
+                                    <span class="material-symbols-outlined text-[16px]" id="copy-icon">content_copy</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Done state (hidden initially) -->
                 <div id="done-section" class="hidden mt-5">
                     <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center">
@@ -190,9 +211,6 @@
         </p>
     </div>
 
-    <!-- Hidden iframes for download triggering -->
-    <div id="download-frames" class="hidden" aria-hidden="true"></div>
-
     <script>
         /* ── Build star background ── */
         (function() {
@@ -220,7 +238,6 @@
 
         const statusText  = document.getElementById('status-text');
         const counterText = document.getElementById('counter-text');
-        const framesEl    = document.getElementById('download-frames');
 
         function markDownloading(index) {
             const statusEl = document.getElementById('status-' + index);
@@ -228,11 +245,8 @@
             statusEl.innerHTML = `
                 <span class="material-symbols-outlined text-[18px] text-indigo-400 dl-arrow">downloading</span>
             `;
-            // Highlight the card
             const card = document.getElementById('file-item-' + index);
-            if (card) {
-                card.classList.add('border-indigo-500/40','bg-indigo-500/10');
-            }
+            if (card) card.classList.add('border-indigo-500/40','bg-indigo-500/10');
         }
 
         function markDone(index) {
@@ -249,9 +263,22 @@
             }
         }
 
-        function triggerDownload(index) {
+        function markError(index) {
+            const statusEl = document.getElementById('status-' + index);
+            if (!statusEl) return;
+            statusEl.innerHTML = `
+                <span class="material-symbols-outlined text-[18px] text-red-400"
+                      style="font-variation-settings:'FILL' 1">error</span>
+            `;
+            const card = document.getElementById('file-item-' + index);
+            if (card) {
+                card.classList.remove('border-indigo-500/40','bg-indigo-500/10');
+                card.classList.add('border-red-500/30','bg-red-500/5');
+            }
+        }
+
+        async function triggerDownload(index) {
             if (index >= total) {
-                // All done
                 statusText.textContent = 'Semua file berhasil diunduh!';
                 counterText.textContent = total + ' / ' + total;
                 document.getElementById('done-section').classList.remove('hidden');
@@ -261,51 +288,74 @@
             const item = downloads[index];
             statusText.textContent = 'Mengunduh: ' + item.title + ' (' + item.format + ')';
             counterText.textContent = (index + 1) + ' / ' + total;
-
             markDownloading(index);
 
-            // Create hidden iframe to trigger download
-            // (more reliable than window.location or <a>.click() for binary files)
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = item.download_url;
-            framesEl.appendChild(iframe);
+            try {
+                // Fetch file sebagai blob — lebih reliable dari iframe:
+                // (1) kita tau kapan selesai via Promise
+                // (2) tidak ada session lock deadlock antar request
+                // (3) tidak terblokir popup blocker browser
+                const response = await fetch(item.download_url, { credentials: 'same-origin' });
 
-            // Wait for download to start (give server time to respond)
-            // then move to next file after delay
-            setTimeout(() => {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                const disposition = response.headers.get('Content-Disposition') || '';
+                const match = disposition.match(/filename="?([^";\n]+)"?/i);
+                a.download = match ? match[1] : (item.title + '.' + (item.format === 'ZIP' ? 'zip' : 'pdf'));
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+
                 markDone(index);
                 completed++;
-                // Queue next download
-                setTimeout(() => triggerDownload(index + 1), 800);
-            }, 2500);
+            } catch (err) {
+                console.error('Download gagal [' + index + ']:', err);
+                markError(index);
+            }
+
+            // Jeda sebelum file berikutnya
+            await new Promise(r => setTimeout(r, 600));
+            triggerDownload(index + 1);
         }
 
         /* ── Retry all ── */
         function retryAll() {
-            // Reset UI
             downloads.forEach((_, i) => {
                 const card = document.getElementById('file-item-' + i);
                 const statusEl = document.getElementById('status-' + i);
                 if (card) card.className = card.className
                     .replace('border-emerald-500/30','border-white/10')
-                    .replace('bg-emerald-500/5','bg-white/5');
+                    .replace('bg-emerald-500/5','bg-white/5')
+                    .replace('border-red-500/30','border-white/10')
+                    .replace('bg-red-500/5','bg-white/5');
                 if (statusEl) statusEl.innerHTML = `
                     <span class="material-symbols-outlined text-[18px] text-white/30 dl-arrow">arrow_downward</span>
                 `;
             });
             document.getElementById('done-section').classList.add('hidden');
             completed = 0;
-            // Clear old iframes
-            framesEl.innerHTML = '';
-            // Restart
             setTimeout(() => triggerDownload(0), 500);
         }
 
         /* ── Start downloads after page load ── */
-        window.addEventListener('load', function() {
-            setTimeout(() => triggerDownload(0), 1200);
-        });
+        window.addEventListener('load', () => setTimeout(() => triggerDownload(0), 1200));
+
+        /* ── Copy User ID ── */
+        function copyUserId() {
+            const id = document.getElementById('pdf-user-id').textContent.trim();
+            navigator.clipboard.writeText(id).then(() => {
+                const icon = document.getElementById('copy-icon');
+                icon.textContent = 'check';
+                icon.style.color = '#34d399';
+                setTimeout(() => { icon.textContent = 'content_copy'; icon.style.color = ''; }, 2000);
+            });
+        }
     </script>
 </body>
 </html>

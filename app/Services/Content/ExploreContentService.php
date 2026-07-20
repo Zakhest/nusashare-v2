@@ -14,13 +14,64 @@ class ExploreContentService
     }
 
     /**
-     * Ambil list konten untuk halaman explore dengan filter kolom yang sesuai database
+     * Ambil pool karya terbaik untuk Hero Spotlight (top N, dirotasi per sesi).
      */
-    public function getExploreList(string $sort = 'latest', ?int $userId = null, string $type = ''): array
+    public function getSpotlightPool(int $limit = 10): array
+    {
+        $cols = [
+            'works.id',
+            'works.creator_id',
+            'works.title',
+            'works.description',
+            'works.content_type',
+            'works.status',
+            'works.cover_url',
+            'works.view_count',
+            'works.is_paid',
+            'works.price',
+            'works.created_at',
+            'users.username as creator_username',
+            'COALESCE(user_profiles.display_name, creator_profiles.display_name) as creator_name',
+        ];
+
+        $primary = $this->contentModel->builder()
+            ->select($cols)
+            ->join('users', 'users.id = works.creator_id')
+            ->join('creator_profiles', 'creator_profiles.user_id = works.creator_id', 'left')
+            ->join('user_profiles', 'user_profiles.user_id = works.creator_id', 'left')
+            ->whereIn('works.status', ['curated', 'museum'])
+            ->orderBy('works.view_count', 'DESC')
+            ->limit($limit)
+            ->get()->getResultArray();
+
+        if (count($primary) < $limit) {
+            $exclude = array_column($primary, 'id');
+            $builder2 = $this->contentModel->builder()
+                ->select($cols)
+                ->join('users', 'users.id = works.creator_id')
+                ->join('creator_profiles', 'creator_profiles.user_id = works.creator_id', 'left')
+                ->join('user_profiles', 'user_profiles.user_id = works.creator_id', 'left')
+                ->where('works.status', 'published')
+                ->orderBy('works.view_count', 'DESC')
+                ->limit($limit - count($primary));
+
+            if (!empty($exclude)) {
+                $builder2->whereNotIn('works.id', $exclude);
+            }
+
+            $primary = array_merge($primary, $builder2->get()->getResultArray());
+        }
+
+        return $primary;
+    }
+
+    /**
+     * Ambil list konten untuk halaman explore dengan filter kolom yang sesuai database.
+     */
+    public function getExploreList(string $sort = 'latest', ?int $userId = null, string $type = '', string $genre = ''): array
     {
         $builder = $this->contentModel->builder();
-        
-        // Setup awal: Select kolom sesuai struktur tabel works
+
         $builder->select([
             'works.id',
             'works.creator_id',
@@ -30,7 +81,11 @@ class ExploreContentService
             'works.status',
             'works.cover_url',
             'works.view_count',
+            'works.is_paid',
+            'works.price',
+            'works.purchase_price',
             'works.created_at',
+            'works.genre',
             'users.username as creator_username',
             'COALESCE(user_profiles.display_name, creator_profiles.display_name) as creator_name'
         ])
@@ -39,38 +94,41 @@ class ExploreContentService
         ->join('user_profiles', 'user_profiles.user_id = works.creator_id', 'left')
         ->whereIn('works.status', ['published', 'curated', 'museum']);
 
-        // Filter berdasarkan tipe konten
-        $allowedTypes = ['novel', 'light_novel', 'comic', 'text'];
-        if (!empty($type) && in_array($type, $allowedTypes)) {
+        $allowedTypes = ['novel', 'light_novel', 'comic', 'image'];
+        if ($type === 'story') {
+            $builder->whereIn('works.content_type', ['novel', 'light_novel', 'comic']);
+        } elseif (!empty($type) && in_array($type, $allowedTypes)) {
             $builder->where('works.content_type', $type);
         }
 
-        // Logika Sorting
+        if (!empty($genre)) {
+            $builder->where('works.genre', $genre);
+        }
+
         if ($sort === 'popular') {
             $builder->orderBy('works.view_count', 'DESC');
-        } elseif ($sort === 'trending') {
-            // Trending = view tinggi dalam 7 hari terakhir
-            $builder->where('works.created_at >=', date('Y-m-d', strtotime('-7 days')))
-                    ->orderBy('works.view_count', 'DESC');
+        } elseif ($sort === 'recommended') {
+            $builder->orderBy("CASE WHEN works.status IN ('curated', 'museum') THEN 0 ELSE 1 END", 'ASC', false)
+                    ->orderBy('works.view_count', 'DESC')
+                    ->orderBy('works.created_at', 'DESC');
         } else {
             $builder->orderBy('works.created_at', 'DESC');
         }
 
         $works = $builder
-            ->limit(24)
+            ->limit(48)
             ->get()
             ->getResultArray();
 
-        // Check bookmarks if userId is provided
         if ($userId && !empty($works)) {
             $workIds = array_column($works, 'id');
             $bookmarkModel = new \App\Models\BookmarkModel();
             $bookmarks = $bookmarkModel->where('user_id', $userId)
                                       ->whereIn('work_id', $workIds)
                                       ->findAll();
-            
+
             $bookmarkedIds = array_column($bookmarks, 'work_id');
-            
+
             foreach ($works as &$work) {
                 $work['is_bookmarked'] = in_array($work['id'], $bookmarkedIds);
             }
@@ -88,7 +146,7 @@ class ExploreContentService
     }
 
     /**
-     * Search works by title or description
+     * Search works by title or description.
      */
     public function searchWorks(string $query): array
     {
@@ -102,6 +160,8 @@ class ExploreContentService
             'works.status',
             'works.cover_url',
             'works.view_count',
+            'works.is_paid',
+            'works.price',
             'works.created_at',
             'users.username as creator_username',
             'COALESCE(user_profiles.display_name, creator_profiles.display_name) as creator_name'
@@ -120,13 +180,13 @@ class ExploreContentService
     }
 
     /**
-     * Search users (including creators) by username or display name
+     * Search users (including creators) by username or display name.
      */
     public function searchUsers(string $query): array
     {
         $userModel = new \App\Models\UserModel();
         $builder = $userModel->builder();
-        
+
         return $builder->select([
             'users.id',
             'users.username',

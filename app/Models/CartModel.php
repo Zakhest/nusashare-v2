@@ -31,6 +31,7 @@ class CartModel extends Model
                 'works.cover_url',
                 'works.is_paid',
                 'works.price',
+                'works.purchase_price',
                 'works.status as work_status_pub',
                 'users.username as creator_name',
             ])
@@ -70,7 +71,7 @@ class CartModel extends Model
     public function getTotalPrice(string $userId): int
     {
         $result = $this->db->table('cart_items')
-            ->select('SUM(works.price) as total')
+            ->select('SUM(CASE WHEN works.purchase_price > 0 THEN works.purchase_price ELSE works.price END) as total')
             ->join('works', 'works.id = cart_items.work_id')
             ->where('cart_items.user_id', $userId)
             ->where('works.is_paid', 1)

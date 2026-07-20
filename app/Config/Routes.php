@@ -44,17 +44,41 @@ $routes->get('logout', 'App\AuthController::logout');
 
 // Explore & Public Content
 $routes->get('explore', 'App\ExploreController::index');
+$routes->get('explore/gallery', 'App\ExploreController::gallery');
+$routes->get('explore/story', 'App\ExploreController::story');
 $routes->get('search', 'App\ExploreController::search');
 $routes->get('user/(:segment)', 'App\ProfileController::show/$1');
 $routes->get('works/(:num)', 'App\WorkController::show/$1');
 $routes->get('works/(:num)/download', 'App\WorkController::download/$1');
 $routes->get('works/(:num)/read/(:num)', 'App\WorkController::read/$1/$2');
-$routes->post('works/(:num)/view', 'App\WorkController::recordView/$1'); // 4-menit threshold view
+$routes->post('works/(:num)/view', 'App\WorkController::recordView/$1'); // 2-menit threshold view
 $routes->get('content/(:segment)', 'App\ContentController::show/$1');
 
 // Legal
 $routes->get('terms', 'Home::terms');
 $routes->get('privacy', 'Home::privacy');
+
+// Admin Panel (Auth: Admin only)
+$routes->get('alpha-admin', 'App\AdminController::index', ['filter' => 'auth:admin']);
+
+// Admin — User Management API (AJAX, auth:admin)
+$routes->get('alpha-admin/api/users',                   'App\AdminController::apiUsers',            ['filter' => 'auth:admin']);
+$routes->get('alpha-admin/api/users/(:segment)',         'App\AdminController::apiUserDetail/$1',    ['filter' => 'auth:admin']);
+$routes->post('alpha-admin/api/users/(:segment)/status', 'App\AdminController::apiUpdateUserStatus/$1', ['filter' => 'auth:admin']);
+$routes->post('alpha-admin/api/users/(:segment)/adjust-cc', 'App\AdminController::apiAdjustUserCC/$1',  ['filter' => 'auth:admin']);
+
+// Admin — Creator Management API (AJAX, auth:admin)
+$routes->get('alpha-admin/api/creators',                          'App\AdminController::apiCreators',                    ['filter' => 'auth:admin']);
+$routes->get('alpha-admin/api/creators/(:segment)',               'App\AdminController::apiCreatorDetail/$1',            ['filter' => 'auth:admin']);
+$routes->post('alpha-admin/api/creators/(:segment)/status',       'App\AdminController::apiUpdateCreatorStatus/$1',      ['filter' => 'auth:admin']);
+$routes->post('alpha-admin/api/creators/(:segment)/starsoul-status', 'App\AdminController::apiUpdateCreatorStarsoulStatus/$1', ['filter' => 'auth:admin']);
+
+// Admin — Transaction History API (AJAX, auth:admin)
+$routes->get('alpha-admin/api/transactions',         'App\AdminController::apiTransactions',      ['filter' => 'auth:admin']);
+$routes->get('alpha-admin/api/transactions/stats',   'App\AdminController::apiTransactionStats',  ['filter' => 'auth:admin']);
+
+
+
 
 // Top Up CC
 $routes->get('topup', 'App\TopupController::index', ['filter' => 'auth:user']);
@@ -152,6 +176,7 @@ $routes->group('creator', ['filter' => 'auth:creator'], function ($routes) {
 
     $routes->post('content/(:num)/publish', 'Creator\ContentController::publish/$1');
     $routes->post('content/(:num)/archive', 'Creator\ContentController::archive/$1');
+    $routes->post('content/(:num)/delete', 'Creator\ContentController::destroy/$1');
 
     // Chapter Management (for text works)
     $routes->get('content/(:num)/chapters', 'Creator\ChapterController::index/$1');
@@ -170,7 +195,13 @@ $routes->group('creator', ['filter' => 'auth:creator'], function ($routes) {
     // Content Stats (simple)
     $routes->get('stats', 'Creator\StatsController::index');
     $routes->get('monetization', 'Creator\MonetizationController::index');
-    $routes->get('content/(:num)/stats', 'Creator\ContentController::stats/$1');
+    $routes->post('monetization/withdraw', 'Creator\MonetizationController::withdraw');
+    $routes->get('monetization/history', 'Creator\MonetizationController::history');
+    $routes->get('monetization/export/excel', 'Creator\MonetizationController::exportExcel');
+    $routes->get('monetization/export/pdf', 'Creator\MonetizationController::exportPdf');
+    $routes->get('monetization/receipt/(:num)', 'Creator\MonetizationController::receipt/$1');
+    $routes->get('stats/works/(:num)', 'Creator\StatsController::work/$1');
+    $routes->get('content/(:num)/stats', 'Creator\StatsController::work/$1');
 
     // Settings
     $routes->get('settings', 'Creator\SettingsController::index');
@@ -211,4 +242,3 @@ $routes->group('api/v1', function ($routes) {
 
 // Public Creator Profile (Placed at the end to avoid shadowing system routes)
 $routes->get('creator/(:segment)', 'App\ProfileController::show/$1');
-

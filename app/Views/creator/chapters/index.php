@@ -20,22 +20,24 @@
     <?= view('creator/_sidebar', ['activePage' => 'content', 'user' => $user, 'creatorProfile' => $creatorProfile, 'username' => $username]) ?>
 
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
-        <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <a href="<?= base_url('creator/content') ?>" class="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-slate-600">
+        <header class="bg-white border-b border-slate-200 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="<?= base_url('creator/content') ?>" class="p-1.5 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-slate-600">
                     <span class="material-symbols-outlined">arrow_back</span>
                 </a>
-                <div>
-                    <h2 class="text-lg font-bold text-slate-900">Daftar Bab</h2>
-                    <p class="text-[10px] text-slate-400 truncate max-w-xs"><?= esc($work['title']) ?></p>
+                <div class="min-w-0">
+                    <h2 class="text-base md:text-lg font-bold text-slate-900">Daftar Bab</h2>
+                    <p class="text-[10px] text-slate-400 truncate max-w-[150px] sm:max-w-xs"><?= esc($work['title']) ?></p>
                 </div>
             </div>
-            <a href="<?= base_url('creator/content/' . $work['id'] . '/chapters/create') ?>" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all">
-                <span class="material-symbols-outlined text-sm">add</span> Tulis Bab Baru
+            <a href="<?= base_url('creator/content/' . $work['id'] . '/chapters/create') ?>" class="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs md:text-sm hover:bg-indigo-700 transition-all">
+                <span class="material-symbols-outlined text-sm">add</span>
+                <span class="hidden sm:inline">Tulis Bab Baru</span>
+                <span class="sm:hidden">Tulis</span>
             </a>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 custom-scrollbar">
             <div class="max-w-3xl mx-auto">
 
                 <?php if ($msg = session()->getFlashdata('message')): ?>
@@ -60,7 +62,8 @@
                     </div>
                 <?php else: ?>
                     <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                        <table class="w-full text-left">
+                        <div class="overflow-x-auto">
+                        <table class="w-full text-left min-w-[560px]">
                             <thead>
                                 <tr class="bg-slate-50/50 border-b border-slate-100">
                                     <th class="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-10">#</th>
@@ -114,6 +117,7 @@
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                        </div>
                     </div>
                     <p class="mt-4 text-xs text-slate-400 text-right"><?= count($chapters) ?> bab total</p>
                 <?php endif; ?>

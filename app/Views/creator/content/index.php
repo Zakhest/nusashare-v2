@@ -37,14 +37,16 @@
     <!-- Main Content -->
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
         <!-- Top Nav -->
-        <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
-            <h2 class="text-lg font-bold text-slate-900">Kelola Karya</h2>
+        <header class="bg-white border-b border-slate-200 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between">
+            <h2 class="text-base md:text-lg font-bold text-slate-900">Kelola Karya</h2>
             
-            <div class="flex items-center gap-6">
-                <a href="<?= base_url('creator/content/create') ?>" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all">
-                    <span class="material-symbols-outlined text-sm">add</span> Buat Karya Baru
+            <div class="flex items-center gap-3">
+                <a href="<?= base_url('creator/content/create') ?>" class="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs md:text-sm hover:bg-indigo-700 transition-all">
+                    <span class="material-symbols-outlined text-sm">add</span>
+                    <span class="hidden sm:inline">Buat Karya Baru</span>
+                    <span class="sm:hidden">Buat</span>
                 </a>
-                <div class="flex items-center gap-3 border-l pl-6 border-slate-100">
+                <div class="hidden md:flex items-center gap-3 border-l pl-6 border-slate-100">
                     <div class="text-right">
                         <p class="text-xs font-bold text-slate-900"><?= $creatorProfile['display_name'] ?? $username ?></p>
                         <p class="text-[10px] text-slate-500 italic">Mode Kreator</p>
@@ -54,21 +56,34 @@
         </header>
 
         <!-- Body -->
-        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 custom-scrollbar">
             
-            <div class="mb-8">
-                <h1 class="text-2xl font-bold text-slate-900">Daftar Karya</h1>
-                <p class="text-slate-500 text-sm mt-1">Semua cerita dan karyamu yang sedang dalam proses atau sudah terbit.</p>
+            <div class="mb-5 md:mb-8">
+                <h1 class="text-xl md:text-2xl font-bold text-slate-900">Daftar Karya</h1>
+                <p class="text-slate-500 text-xs md:text-sm mt-1">Semua cerita dan karyamu yang sedang dalam proses atau sudah terbit.</p>
             </div>
 
-            <!-- Filters & Search (Simplified for now) -->
-            <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-2xl w-full md:w-96">
+            <?php if (session()->getFlashdata('message')): ?>
+                <div class="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                    <?= esc(session()->getFlashdata('message')) ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (session()->getFlashdata('errors')): ?>
+                <div class="mb-5 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                    <?php $errors = session()->getFlashdata('errors'); ?>
+                    <?= esc(is_array($errors) ? reset($errors) : $errors) ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- Filters & Search -->
+            <div class="bg-white rounded-3xl p-3 md:p-4 shadow-sm border border-slate-100 mb-5 md:mb-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-2xl w-full sm:w-auto sm:flex-1 sm:max-w-sm">
                     <span class="material-symbols-outlined text-slate-400 text-lg">search</span>
                     <input type="text" placeholder="Cari judul karya..." class="bg-transparent border-none focus:outline-none text-sm w-full text-slate-600">
                 </div>
-                <div class="flex items-center gap-3 w-full md:w-auto">
-                    <select class="bg-slate-50 px-4 py-2 rounded-2xl text-sm font-medium text-slate-600 focus:outline-none border-none cursor-pointer">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <select class="bg-slate-50 px-4 py-2 rounded-2xl text-sm font-medium text-slate-600 focus:outline-none border-none cursor-pointer w-full sm:w-auto">
                         <option value="">Semua Status</option>
                         <option value="published">Terbit</option>
                         <option value="draft">Draft</option>
@@ -78,13 +93,14 @@
 
             <!-- Content Table -->
             <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                <table class="w-full text-left border-collapse">
+                <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[500px]">
                     <thead>
                         <tr class="bg-slate-50/50 border-b border-slate-100">
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Karya</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Status</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Update</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Aksi</th>
+                            <th class="px-5 md:px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Karya</th>
+                            <th class="px-5 md:px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Status</th>
+                            <th class="px-5 md:px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Update</th>
+                            <th class="px-5 md:px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -103,17 +119,16 @@
                         <?php else: ?>
                             <?php foreach ($works as $work): ?>
                                 <tr class="hover:bg-slate-50/50 transition-colors">
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center gap-4">
-                                            <div class="w-12 h-16 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0 shadow-sm border border-slate-200">
+                                    <td class="px-5 md:px-6 py-4">
+                                        <div class="flex items-center gap-3 md:gap-4">
+                                            <div class="w-10 md:w-12 h-14 md:h-16 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0 shadow-sm border border-slate-200">
                                                 <?php if (!empty($work['cover_url'])): ?>
                                                     <?php 
                                                         $cUrl = base_url('image/cover/' . $work['id']);
                                                         if (empty($work['cover_url'])) {
-                                                            $cUrl = base_url('assets/img/default-cover.jpg'); // Fallback handled by proxy too but good to be safe
+                                                            $cUrl = base_url('assets/icon/logonuss.png');
                                                         }
                                                     ?>
-
                                                     <img src="<?= $cUrl ?>" class="w-full h-full object-cover">
                                                 <?php else: ?>
                                                     <div class="w-full h-full flex items-center justify-center text-slate-300">
@@ -121,36 +136,59 @@
                                                     </div>
                                                 <?php endif; ?>
                                             </div>
-                                            <div>
+                                            <div class="min-w-0">
                                                 <h4 class="font-bold text-slate-900 text-sm line-clamp-1"><?= $work['title'] ?></h4>
                                                 <p class="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-tight"><?= $work['content_type'] === 'image' ? 'Gambar' : 'Teks' ?></p>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 text-center">
+                                    <td class="px-5 md:px-6 py-4 text-center">
                                         <?php if (($work['status'] ?? 'draft') === 'published'): ?>
                                             <span class="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full uppercase tracking-tight">Terbit</span>
                                         <?php else: ?>
                                             <span class="px-3 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-full uppercase tracking-tight">Draft</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="px-6 py-4 text-center">
-                                        <p class="text-xs text-slate-500 font-medium"><?= date('d M Y', strtotime($work['updated_at'] ?? $work['created_at'])) ?></p>
+                                    <td class="px-5 md:px-6 py-4 text-center">
+                                        <p class="text-xs text-slate-500 font-medium whitespace-nowrap"><?= date('d M Y', strtotime($work['updated_at'] ?? $work['created_at'])) ?></p>
                                     </td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center justify-end gap-2">
+                                    <td class="px-5 md:px-6 py-4">
+                                        <div class="flex items-center justify-end gap-1.5 md:gap-2">
                                             <?php if ($work['content_type'] === 'image'): ?>
-                                                <a href="<?= base_url('creator/content/' . $work['id'] . '/images') ?>" class="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all">
-                                                    <span class="material-symbols-outlined text-sm">image</span> Gambar
+                                                <a href="<?= base_url('creator/content/' . $work['id'] . '/images') ?>" class="flex items-center gap-1 px-2 md:px-3 py-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all">
+                                                    <span class="material-symbols-outlined text-sm">image</span>
+                                                    <span class="hidden sm:inline">Gambar</span>
                                                 </a>
                                             <?php else: ?>
-                                                <a href="<?= base_url('creator/content/' . $work['id'] . '/chapters') ?>" class="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all">
-                                                    <span class="material-symbols-outlined text-sm">auto_stories</span> Bab
+                                                <a href="<?= base_url('creator/content/' . $work['id'] . '/chapters') ?>" class="flex items-center gap-1 px-2 md:px-3 py-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all">
+                                                    <span class="material-symbols-outlined text-sm">auto_stories</span>
+                                                    <span class="hidden sm:inline">Bab</span>
                                                 </a>
+                                            <?php endif; ?>
+                                            <?php if (($work['status'] ?? 'draft') === 'published'): ?>
+                                                <form method="post" action="<?= base_url('creator/content/' . $work['id'] . '/archive') ?>" class="inline">
+                                                    <?= csrf_field() ?>
+                                                    <button type="submit" class="p-2 text-amber-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all" title="Tarik Karya" onclick="return confirm('Tarik karya ini dari publik dan ubah menjadi draft?')">
+                                                        <span class="material-symbols-outlined text-lg">archive</span>
+                                                    </button>
+                                                </form>
+                                            <?php else: ?>
+                                                <form method="post" action="<?= base_url('creator/content/' . $work['id'] . '/publish') ?>" class="inline">
+                                                    <?= csrf_field() ?>
+                                                    <button type="submit" class="p-2 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Terbitkan Karya" onclick="return confirm('Terbitkan karya ini ke publik?')">
+                                                        <span class="material-symbols-outlined text-lg">publish</span>
+                                                    </button>
+                                                </form>
                                             <?php endif; ?>
                                             <a href="<?= base_url('creator/content/' . $work['id'] . '/edit') ?>" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all" title="Edit Info">
                                                 <span class="material-symbols-outlined text-lg">tune</span>
                                             </a>
+                                            <form method="post" action="<?= base_url('creator/content/' . $work['id'] . '/delete') ?>" class="inline">
+                                                <?= csrf_field() ?>
+                                                <button type="submit" class="p-2 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="Hapus Karya" onclick="return confirm('Hapus karya ini secara permanen? Bab, gambar, dan interaksi terkait juga akan dihapus.')">
+                                                    <span class="material-symbols-outlined text-lg">delete</span>
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>
@@ -158,11 +196,12 @@
                         <?php endif; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
 
-            <!-- Pagination (Simplified for now) -->
+            <!-- Pagination -->
             <?php if (!empty($works)): ?>
-            <div class="mt-6 flex items-center justify-between">
+            <div class="mt-5 md:mt-6 flex items-center justify-between">
                 <p class="text-xs text-slate-500">Menampilkan <?= count($works) ?> karya</p>
                 <div class="flex items-center gap-2">
                     <button class="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 cursor-not-allowed">

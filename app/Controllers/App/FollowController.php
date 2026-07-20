@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\FollowModel;
 use App\Models\UserModel;
 use App\Models\CreatorProfileModel;
+use App\Services\NotificationService;
 
 class FollowController extends BaseController
 {
@@ -77,6 +78,11 @@ class FollowController extends BaseController
             'follower_id' => $userId,
             'followed_id' => $creatorId
         ]);
+
+        // Kirim notifikasi ke kreator bahwa ada pengikut baru
+        $followerUser = $this->userModel->find($userId);
+        $followerUsername = $followerUser['username'] ?? $userId;
+        (new NotificationService())->notifyFollow($creatorId, $followerUsername);
 
         return $this->response->setJSON(['status' => 'success', 'message' => 'Berhasil mengikuti!']);
     }

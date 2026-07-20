@@ -39,11 +39,11 @@
     <!-- Main Content -->
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
         <!-- Top Nav -->
-        <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
-            <h2 class="text-lg font-bold text-slate-900">Pengaturan</h2>
+        <header class="bg-white border-b border-slate-200 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between">
+            <h2 class="text-base md:text-lg font-bold text-slate-900">Pengaturan</h2>
             
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-3 border-l pl-6 border-slate-100">
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-3 border-l pl-6 border-slate-100">
                     <div class="text-right">
                         <p class="text-xs font-bold text-slate-900"><?= $creatorProfile['display_name'] ?? $username ?></p>
                         <p class="text-[10px] text-slate-500 italic">Mode Kreator</p>
@@ -53,12 +53,12 @@
         </header>
 
         <!-- Body -->
-        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 custom-scrollbar">
             
             <div class="max-w-4xl mx-auto">
-                <div class="mb-10">
-                    <h1 class="text-2xl font-bold text-slate-900">Profil Kreator</h1>
-                    <p class="text-slate-500 text-sm mt-1">Sesuaikan bagaimana pembaca melihat identitasmu di paltform.</p>
+                <div class="mb-6 md:mb-10">
+                    <h1 class="text-xl md:text-2xl font-bold text-slate-900">Profil Kreator</h1>
+                    <p class="text-slate-500 text-xs md:text-sm mt-1">Sesuaikan bagaimana pembaca melihat identitasmu di paltform.</p>
                 </div>
 
                 <!-- Feedback Messages -->
@@ -77,7 +77,7 @@
                 <?php endif; ?>
 
                 <div class="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
-                    <form action="<?= base_url('creator/settings') ?>" method="POST" class="p-8 md:p-12">
+                    <form action="<?= base_url('creator/settings') ?>" method="POST" class="p-5 md:p-8 lg:p-12">
                         <?= csrf_field() ?>
                         
                         <div class="space-y-10">
@@ -130,7 +130,7 @@
                 </div>
 
                 <!-- Danger Zone -->
-                <div class="mt-12 p-8 border border-rose-100 bg-rose-50/30 rounded-[32px]">
+                <div class="mt-6 md:mt-12 p-5 md:p-8 border border-rose-100 bg-rose-50/30 rounded-[32px]">
                     <h3 class="text-rose-600 font-black text-xs uppercase tracking-widest mb-4">Zona Berbahaya</h3>
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>

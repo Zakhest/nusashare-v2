@@ -27,8 +27,7 @@ class AuthController extends BaseController
         
         return view('login', $data);
     }
-
-    public function attempt()
+public function attempt()
     {
         $email = $this->request->getPost('email');
         $password = $this->request->getPost('password');
@@ -41,13 +40,39 @@ class AuthController extends BaseController
                 'userId'     => $user['id'],
                 'username'   => $user['username'],
                 'email'      => $user['email'],
-                'role'       => $user['role'],
+                'role'       => $user['role'], // Mengambil ENUM: user, creator, editor, admin
                 'isLoggedIn' => true,
             ];
 
             session()->set($sessionData);
 
-            return redirect()->to(base_url('dashboard'))->with('success', 'Selamat datang kembali, ' . $user['username'] . '!');
+            // Jika ada URL yang dituju sebelum login, kembalikan ke sana
+            $redirectUrl = session()->getFlashdata('redirect_url') ?? session()->get('redirect_url');
+            if ($redirectUrl) {
+                session()->remove('redirect_url');
+                // Hanya izinkan redirect ke URL internal (hindari open redirect)
+                $baseHost = parse_url(base_url(), PHP_URL_HOST);
+                $targetHost = parse_url($redirectUrl, PHP_URL_HOST);
+                if ($targetHost === $baseHost || $targetHost === null) {
+                    $successMsg = 'Selamat datang kembali, ' . $user['username'] . '!';
+                    return redirect()->to($redirectUrl)->with('success', $successMsg);
+                }
+            }
+
+            // TENTUKAN GERBANG MASUK BERDASARKAN ROLE DI DATABASE
+            switch ($user['role']) {
+                case 'admin':
+                    return redirect()->to(base_url('alpha-admin'))->with('success', 'Halo Admin, Panel Kontrol NusaShare Siap Dioperasikan!');
+                
+                case 'creator':
+                    return redirect()->to(base_url('dashboard'))->with('success', 'Selamat datang kembali, Kreator ' . $user['username'] . '!');
+                
+                case 'editor':
+                    return redirect()->to(base_url('editor/dashboard'))->with('success', 'Selamat bekerja, Editor ' . $user['username'] . '!');
+                
+                default: // 'user'
+                    return redirect()->to(base_url('dashboard'))->with('success', 'Selamat datang kembali, ' . $user['username'] . '!');
+            }
         }
 
         return redirect()->back()->withInput()->with('error', 'Email atau kata sandi salah.');

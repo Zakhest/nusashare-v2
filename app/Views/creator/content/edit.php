@@ -120,6 +120,13 @@
                                     class="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm text-slate-900 font-medium">
                             </div>
 
+                            <!-- Genre -->
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">Genre</label>
+                                <input type="text" name="genre" value="<?= esc(old('genre', $work['genre'] ?? '')) ?>" placeholder="Contoh: Action, Romance, Fantasy..." 
+                                    class="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm text-slate-900 font-medium">
+                            </div>
+
                             <!-- Tipe & Status -->
                             <div class="grid grid-cols-2 gap-4">
                                 <div>

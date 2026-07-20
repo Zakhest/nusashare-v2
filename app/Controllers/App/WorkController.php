@@ -13,9 +13,12 @@ use App\Models\CommentModel;
 use App\Models\ReadingHistoryModel;
 use App\Models\UnlockedChapterModel;
 use App\Models\BookmarkModel;
+use App\Services\NotificationService;
 
 class WorkController extends BaseController
 {
+    private const VIEW_THRESHOLD_SECONDS = 120;
+
     protected $contentModel;
     protected $chapterModel;
     protected $imageModel;
@@ -44,7 +47,8 @@ class WorkController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound("Karya tidak ditemukan.");
         }
 
-        // View count ditangani via AJAX setelah 4 menit (threshold)
+        // View count ditangani via AJAX setelah 2 menit (threshold)
+        $this->startViewThreshold((int)$id);
 
         $data = [
             'work'          => $work,
@@ -54,6 +58,11 @@ class WorkController extends BaseController
             'hasBookmarked' => false,
             'comments'      => $this->commentModel->getByWork($id),
         ];
+
+        // Jika belum login, simpan URL ini agar setelah login bisa kembali ke sini
+        if (!session()->get('isLoggedIn')) {
+            session()->set('redirect_url', current_url());
+        }
 
         // Fetch user context if logged in (for navbar etc)
         $userId = session()->get('userId');
@@ -173,7 +182,8 @@ class WorkController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound("Bab tidak ditemukan.");
         }
 
-        // View count ditangani via AJAX setelah 4 menit (threshold)
+        // View count ditangani via AJAX setelah 2 menit (threshold)
+        $this->startViewThreshold((int)$workId);
 
         // Get all chapters to determine prev/next
         $allChapters = $this->chapterModel->getByWork($workId);
@@ -201,6 +211,7 @@ class WorkController extends BaseController
             'chapter'      => $chapter,
             'prevChapter'  => $prevChapter,
             'nextChapter'  => $nextChapter,
+            'allChapters'  => $allChapters,
             'isLoggedIn'   => session()->get('isLoggedIn') ?? false,
         ];
 
@@ -295,8 +306,12 @@ class WorkController extends BaseController
 
         // Record Transactions
         $transactionModel = new \App\Models\TransactionModel();
-        $transactionModel->record($userId, $price, 'out', 'unlock', $id, 'Membuka karya: ' . $work['title']);
-        $transactionModel->record($work['creator_id'], $price, 'in', 'unlock', $id, 'Karya dibuka: ' . $work['title']);
+        $_buyerUser = (new \App\Models\UserModel())->find($userId);
+        $buyerUsername = '@' . ($_buyerUser['username'] ?? 'user_id:' . $userId);
+        $_creatorUser = (new \App\Models\UserModel())->find($work['creator_id']);
+        $creatorUsername = '@' . ($_creatorUser['username'] ?? 'user_id:' . $work['creator_id']);
+        $transactionModel->record($userId, $price, 'out', 'unlock', $id, 'Buka karya ' . $creatorUsername . ': ' . $work['title']);
+        $transactionModel->record($work['creator_id'], $price, 'in', 'unlock', $id, 'Karya dibuka oleh ' . $buyerUsername . ': ' . $work['title']);
 
         $db->transComplete();
 
@@ -309,6 +324,14 @@ class WorkController extends BaseController
 
         $timer = $work['timer_duration'] ?: 30;
         session()->set('unlocked_' . $work['id'], time() + $timer);
+
+        // Kirim notifikasi ke kreator bahwa karyanya dibuka
+        (new NotificationService())->notifyUnlock(
+            $work['creator_id'],
+            $buyerUsername,
+            $work['title'],
+            (int)$id
+        );
 
         return $this->response->setJSON([
             'status'  => 'success',
@@ -400,8 +423,12 @@ class WorkController extends BaseController
 
         // Record Transactions
         $transactionModel = new \App\Models\TransactionModel();
-        $transactionModel->record($userId, $price, 'out', 'unlock', $chapterId, 'Membuka bab: ' . $chapter['title']);
-        $transactionModel->record($work['creator_id'], $price, 'in', 'unlock', $chapterId, 'Bab dibuka: ' . $chapter['title'] . ' (Karya: ' . $work['title'] . ')');
+        $_buyerUser = (new \App\Models\UserModel())->find($userId);
+        $buyerUsername = '@' . ($_buyerUser['username'] ?? 'user_id:' . $userId);
+        $_creatorUser = (new \App\Models\UserModel())->find($work['creator_id']);
+        $creatorUsername = '@' . ($_creatorUser['username'] ?? 'user_id:' . $work['creator_id']);
+        $transactionModel->record($userId, $price, 'out', 'unlock', $chapterId, 'Buka bab ' . $creatorUsername . ': ' . $chapter['title'] . ' (Karya: ' . $work['title'] . ')');
+        $transactionModel->record($work['creator_id'], $price, 'in', 'unlock', $chapterId, 'Bab dibuka oleh ' . $buyerUsername . ': ' . $chapter['title'] . ' (Karya: ' . $work['title'] . ')');
 
         $db->transComplete();
 
@@ -412,6 +439,15 @@ class WorkController extends BaseController
             ]);
         }
 
+        // Kirim notifikasi ke kreator bahwa babnya dibuka
+        (new NotificationService())->notifyUnlockChapter(
+            $work['creator_id'],
+            $buyerUsername,
+            $chapter['title'],
+            $work['title'],
+            (int)$chapter['work_id']
+        );
+
         return $this->response->setJSON([
             'status'  => 'success',
             'message' => 'Bab berhasil dibuka!',
@@ -421,7 +457,7 @@ class WorkController extends BaseController
 
     /**
      * POST /works/(:num)/view
-     * Dipanggil oleh JavaScript setelah user membuka halaman selama >= 4 menit.
+     * Dipanggil oleh JavaScript setelah user membuka halaman selama >= 2 menit.
      * Tidak memerlukan login.
      */
     public function recordView($id)
@@ -436,9 +472,56 @@ class WorkController extends BaseController
                 ->setStatusCode(404);
         }
 
-        $newCount = ($work['view_count'] ?? 0) + 1;
+        $workId = (int)$id;
+        $session = session();
+        $startedKey = $this->viewStartedKey($workId);
+        $countedKey = $this->viewCountedKey($workId);
 
-        $this->contentModel->set('view_count', $newCount)->where('id', (int)$id)->update();
+        if ($session->get($countedKey)) {
+            return $this->response
+                ->setHeader('Content-Type', 'application/json')
+                ->setJSON([
+                    'status'     => 'success',
+                    'message'    => 'View already recorded for this session.',
+                    'view_count' => (int)($work['view_count'] ?? 0),
+                ]);
+        }
+
+        $startedAt = (int)($session->get($startedKey) ?? 0);
+        if ($startedAt <= 0) {
+            $this->startViewThreshold($workId);
+            return $this->response
+                ->setHeader('Content-Type', 'application/json')
+                ->setJSON([
+                    'status'            => 'pending',
+                    'message'           => 'View threshold has not started yet.',
+                    'remaining_seconds' => self::VIEW_THRESHOLD_SECONDS,
+                ])
+                ->setStatusCode(425);
+        }
+
+        $elapsed = time() - $startedAt;
+        if ($elapsed < self::VIEW_THRESHOLD_SECONDS) {
+            return $this->response
+                ->setHeader('Content-Type', 'application/json')
+                ->setJSON([
+                    'status'            => 'pending',
+                    'message'           => 'View threshold has not been reached.',
+                    'remaining_seconds' => self::VIEW_THRESHOLD_SECONDS - $elapsed,
+                ])
+                ->setStatusCode(425);
+        }
+
+        $this->contentModel
+            ->set('view_count', 'COALESCE(view_count, 0) + 1', false)
+            ->where('id', $workId)
+            ->update();
+
+        $updatedWork = $this->contentModel->select('view_count')->find($workId);
+        $newCount = (int)($updatedWork['view_count'] ?? (($work['view_count'] ?? 0) + 1));
+
+        $session->set($countedKey, true);
+        $session->remove($startedKey);
 
         return $this->response
             ->setHeader('Content-Type', 'application/json')
@@ -447,5 +530,26 @@ class WorkController extends BaseController
                 'message'    => 'View recorded.',
                 'view_count' => $newCount,
             ]);
+    }
+
+    private function startViewThreshold(int $workId): void
+    {
+        $session = session();
+
+        if ($session->get($this->viewCountedKey($workId)) || $session->get($this->viewStartedKey($workId))) {
+            return;
+        }
+
+        $session->set($this->viewStartedKey($workId), time());
+    }
+
+    private function viewStartedKey(int $workId): string
+    {
+        return 'view_started_work_' . $workId;
+    }
+
+    private function viewCountedKey(int $workId): string
+    {
+        return 'view_counted_work_' . $workId;
     }
 }

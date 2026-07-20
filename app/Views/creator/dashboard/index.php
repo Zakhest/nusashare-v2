@@ -39,14 +39,16 @@
     <!-- Main Content -->
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
         <!-- Top Nav -->
-        <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
-            <h2 class="text-lg font-bold text-slate-900">Dashboard Kreator</h2>
+        <header class="bg-white border-b border-slate-200 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <h2 class="text-base md:text-lg font-bold text-slate-900">Dashboard Kreator</h2>
+            </div>
             
-            <div class="flex items-center gap-6">
+            <div class="flex items-center gap-3 md:gap-6">
                 <a href="<?= base_url('creator/content/create') ?>" class="hidden md:flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all">
                     <span class="material-symbols-outlined text-sm">add</span> Buat Karya Baru
                 </a>
-                <div class="flex items-center gap-3 border-l pl-6 border-slate-100">
+                <div class="hidden md:flex items-center gap-3 border-l pl-6 border-slate-100">
                     <div class="text-right">
                         <p class="text-xs font-bold text-slate-900"><?= $creatorProfile['display_name'] ?? $username ?></p>
                         <p class="text-[10px] text-slate-500 italic">Mode Kreator</p>
@@ -56,13 +58,13 @@
         </header>
 
         <!-- Dashboard Body -->
-        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 custom-scrollbar">
             
             <!-- Welcome Header -->
-            <div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div class="mb-6 md:mb-10 flex flex-col md:flex-row md:items-end justify-between gap-2">
                 <div>
-                    <h1 class="text-3xl font-bold text-slate-900 mb-2">Semangat Berkarya, <?= explode(' ', $creatorProfile['display_name'] ?? $username)[0] ?>! 🚀</h1>
-                    <p class="text-slate-500 text-sm">Ayo buat perubahan melalui setiap kata dan cerita yang kamu bagikan.</p>
+                    <h1 class="text-xl md:text-3xl font-bold text-slate-900 mb-1 md:mb-2">Semangat Berkarya, <?= explode(' ', $creatorProfile['display_name'] ?? $username)[0] ?>! 🚀</h1>
+                    <p class="text-slate-500 text-xs md:text-sm">Ayo buat perubahan melalui setiap kata dan cerita yang kamu bagikan.</p>
                 </div>
                 <div class="text-right">
                     <p class="text-xs text-slate-400 font-medium"><?= date('d F Y') ?></p>
@@ -70,7 +72,7 @@
             </div>
 
             <!-- Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10">
                 <div class="stat-card bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                     <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
                         <span class="material-symbols-outlined">auto_stories</span>
@@ -101,7 +103,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
                 <!-- Latest Works List -->
                 <div class="lg:col-span-2 space-y-6">
                     <div class="flex items-center justify-between">

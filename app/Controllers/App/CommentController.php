@@ -5,6 +5,8 @@ namespace App\Controllers\App;
 use App\Controllers\BaseController;
 use App\Models\CommentModel;
 use App\Models\UserModel;
+use App\Models\ExploreContentModel;
+use App\Services\NotificationService;
 
 class CommentController extends BaseController
 {
@@ -53,6 +55,19 @@ class CommentController extends BaseController
             $userModel = new UserModel();
             $user      = $userModel->find($userId);
 
+            // Kirim notifikasi ke kreator karya (jika bukan kreator sendiri yang berkomentar)
+            $contentModel = new ExploreContentModel();
+            $work = $contentModel->find((int)$workId);
+            if ($work && $work['creator_id'] !== $userId) {
+                $commenterUsername = session()->get('username') ?? $userId;
+                (new NotificationService())->notifyComment(
+                    $work['creator_id'],
+                    $commenterUsername,
+                    $work['title'],
+                    (int)$workId
+                );
+            }
+
             return $this->response->setJSON([
                 'status'  => 'success',
                 'message' => 'Komentar berhasil ditambahkan.',
@@ -65,6 +80,19 @@ class CommentController extends BaseController
                     'created_at' => date('Y-m-d H:i:s'),
                 ]
             ]);
+        }
+
+        // Untuk non-AJAX: juga kirim notifikasi
+        $contentModel = new ExploreContentModel();
+        $work = $contentModel->find((int)$workId);
+        if ($work && $work['creator_id'] !== $userId) {
+            $commenterUsername = session()->get('username') ?? $userId;
+            (new NotificationService())->notifyComment(
+                $work['creator_id'],
+                $commenterUsername,
+                $work['title'],
+                (int)$workId
+            );
         }
 
         return redirect()->back()->with('success', 'Komentar berhasil ditambahkan.');

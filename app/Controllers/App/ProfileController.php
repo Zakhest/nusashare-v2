@@ -191,6 +191,8 @@ class ProfileController extends BaseController
             'creatorProfile' => $creatorProfile,
             'works'          => $works,
             'isFollowing'    => $isFollowing,
+            'followerCount'  => $followModel->getFollowerCount($user['id']),
+            'readerCount'    => $followModel->getTotalReaders($user['id']),
             'isLoggedIn'     => session()->get('isLoggedIn') ?? false
         ];
 

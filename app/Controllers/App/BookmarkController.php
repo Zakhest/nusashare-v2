@@ -44,6 +44,7 @@ class BookmarkController extends BaseController
                     'works.view_count',
                     'works.is_paid',
                     'works.price',
+                    'works.purchase_price',
                     'works.work_status',
                     'works.created_at',
                     'users.username as creator_name'

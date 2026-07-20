@@ -23,23 +23,23 @@
     <?= view('creator/_sidebar', ['activePage' => 'content', 'user' => $user, 'creatorProfile' => $creatorProfile, 'username' => $username]) ?>
 
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
-        <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <a href="<?= base_url('creator/content') ?>" class="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-slate-600">
+        <header class="bg-white border-b border-slate-200 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="<?= base_url('creator/content') ?>" class="p-1.5 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-slate-600">
                     <span class="material-symbols-outlined">arrow_back</span>
                 </a>
-                <div>
-                    <h2 class="text-lg font-bold text-slate-900">Kelola Gambar</h2>
-                    <p class="text-[10px] text-slate-400 truncate max-w-xs"><?= esc($work['title']) ?></p>
+                <div class="min-w-0">
+                    <h2 class="text-base md:text-lg font-bold text-slate-900">Kelola Gambar</h2>
+                    <p class="text-[10px] text-slate-400 truncate max-w-[150px] sm:max-w-xs"><?= esc($work['title']) ?></p>
                 </div>
             </div>
-            <div class="flex items-center gap-3 text-right">
+            <div class="hidden md:flex items-center gap-3 text-right">
                 <p class="text-xs font-bold text-slate-900"><?= $creatorProfile['display_name'] ?? $username ?></p>
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
-            <div class="max-w-5xl mx-auto space-y-8">
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-24 lg:pb-8 custom-scrollbar">
+            <div class="max-w-5xl mx-auto space-y-5 md:space-y-8">
 
                 <?php if ($msg = session()->getFlashdata('message')): ?>
                     <div class="px-5 py-4 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-2xl text-sm font-medium flex items-center gap-3">

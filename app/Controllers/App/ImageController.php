@@ -8,6 +8,8 @@ use App\Models\WorkImageModel;
 
 class ImageController extends BaseController
 {
+    private const IMAGE_BROWSER_CACHE_SECONDS = 604800; // 7 days
+
     /**
      * Proxy for Work Cover
      */
@@ -89,11 +91,14 @@ class ImageController extends BaseController
         $mimeType = mime_content_type($filePath) ?: 'image/jpeg';
         $content  = file_get_contents($filePath);
 
-        return $this->response
-            ->setHeader('Content-Type', $mimeType)
-            ->setHeader('Cache-Control', 'private, max-age=86400')
-            ->setHeader('X-Content-Type-Options', 'nosniff')
-            ->setBody($content);
+        $etag = $this->etagFromFile($filePath);
+        $lastModified = filemtime($filePath) ?: time();
+
+        if ($this->clientHasFreshImage($etag, $lastModified)) {
+            return $this->imageResponse($mimeType, '', $etag, $lastModified)->setStatusCode(304);
+        }
+
+        return $this->imageResponse($mimeType, $content, $etag, $lastModified);
     }
 
     /**
@@ -136,11 +141,15 @@ class ImageController extends BaseController
                 return $this->response->setStatusCode(404);
             }
 
-            return $this->response
-                ->setHeader('Content-Type', $resp->getHeaderLine('Content-Type'))
-                ->setHeader('Cache-Control', 'public, max-age=86400')
-                ->setHeader('X-Content-Type-Options', 'nosniff')
-                ->setBody($resp->getBody());
+            $content = $resp->getBody();
+            $etag = '"' . md5($url . $content) . '"';
+            $lastModified = time();
+
+            if ($this->clientHasFreshImage($etag, $lastModified)) {
+                return $this->imageResponse($resp->getHeaderLine('Content-Type'), '', $etag, $lastModified, 'public')->setStatusCode(304);
+            }
+
+            return $this->imageResponse($resp->getHeaderLine('Content-Type'), $content, $etag, $lastModified, 'public');
         } catch (\Exception $e) {
             return $this->response->setStatusCode(404);
         }
@@ -167,11 +176,14 @@ class ImageController extends BaseController
         $mimeType = mime_content_type($filePath) ?: 'image/jpeg';
         $content  = file_get_contents($filePath);
 
-        return $this->response
-            ->setHeader('Content-Type', $mimeType)
-            ->setHeader('Cache-Control', 'private, max-age=86400')
-            ->setHeader('X-Content-Type-Options', 'nosniff')
-            ->setBody($content);
+        $etag = $this->etagFromFile($filePath);
+        $lastModified = filemtime($filePath) ?: time();
+
+        if ($this->clientHasFreshImage($etag, $lastModified)) {
+            return $this->imageResponse($mimeType, '', $etag, $lastModified)->setStatusCode(304);
+        }
+
+        return $this->imageResponse($mimeType, $content, $etag, $lastModified);
     }
 
 
@@ -186,6 +198,13 @@ class ImageController extends BaseController
     // Jika tujuannya adalah 'document', berarti user buka di tab baru / direct URL
     if ($fetchDest === 'document') {
         return false;
+    }
+
+    // Browser mobile dan beberapa in-app webview kadang tidak mengirim Referer,
+    // tetapi tetap mengirim Fetch Metadata untuk request gambar. Izinkan kasus ini
+    // supaya cover/galeri tidak gagal load di mobile, sambil tetap memblok direct open.
+    if ($fetchDest === 'image') {
+        return true;
     }
 
     $referer = $this->request->getServer('HTTP_REFERER');
@@ -221,20 +240,28 @@ class ImageController extends BaseController
     $cacheDir = WRITEPATH . 'cache/watermarked/';
     // Include watermark size and locked status in cache key
     $lockedSuffix = $isLocked ? '_blurred' : '';
-    $cacheKey = md5($path . $watermarkText . '_large' . $lockedSuffix); 
+    $sourceVersion = $this->sourceVersion($path);
+    $cacheKey = md5($path . $sourceVersion . $watermarkText . '_large' . $lockedSuffix);
     $cacheFile = $cacheDir . $cacheKey;
     
     if (!is_dir($cacheDir)) {
         mkdir($cacheDir, 0777, true);
     }
 
-    if (file_exists($cacheFile)) {
+    $cacheTtl = self::IMAGE_BROWSER_CACHE_SECONDS;
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheTtl)) {
         $mimeType = mime_content_type($cacheFile) ?: 'image/jpeg';
-        return $this->response
-            ->setHeader('Content-Type', $mimeType)
-            ->setHeader('X-Cache', 'HIT')
-            ->setHeader('Cache-Control', 'private, max-age=86400')
-            ->setBody(file_get_contents($cacheFile));
+        $etag = $this->etagFromFile($cacheFile);
+        $lastModified = filemtime($cacheFile) ?: time();
+
+        if ($this->clientHasFreshImage($etag, $lastModified)) {
+            return $this->imageResponse($mimeType, '', $etag, $lastModified)
+                ->setHeader('X-Cache', 'HIT')
+                ->setStatusCode(304);
+        }
+
+        return $this->imageResponse($mimeType, file_get_contents($cacheFile), $etag, $lastModified)
+            ->setHeader('X-Cache', 'HIT');
     }
 
     // --- BAGIAN 1: AMBIL FILE ---
@@ -379,12 +406,61 @@ class ImageController extends BaseController
         }
     }
 
+    if (!file_exists($cacheFile)) {
+        file_put_contents($cacheFile, $content);
+    }
+
     // --- BAGIAN 3: KIRIM KE BROWSER ---
-    return $this->response
-        ->setHeader('Content-Type', $mimeType)
-        ->setHeader('X-Cache', 'MISS')
-        ->setHeader('X-Content-Type-Options', 'nosniff')
-        ->setHeader('Cache-Control', 'private, max-age=86400')
-        ->setBody($content);
+    $etag = file_exists($cacheFile) ? $this->etagFromFile($cacheFile) : '"' . md5($content) . '"';
+    $lastModified = file_exists($cacheFile) ? (filemtime($cacheFile) ?: time()) : time();
+
+    return $this->imageResponse($mimeType, $content, $etag, $lastModified)
+        ->setHeader('X-Cache', 'MISS');
 }
+
+    private function imageResponse(string $mimeType, string $content, string $etag, int $lastModified, string $visibility = 'private')
+    {
+        return $this->response
+            ->setHeader('Content-Type', $mimeType ?: 'image/jpeg')
+            ->setHeader('Cache-Control', $visibility . ', max-age=' . self::IMAGE_BROWSER_CACHE_SECONDS)
+            ->setHeader('ETag', $etag)
+            ->setHeader('Last-Modified', gmdate('D, d M Y H:i:s', $lastModified) . ' GMT')
+            ->setHeader('X-Content-Type-Options', 'nosniff')
+            ->setBody($content);
+    }
+
+    private function clientHasFreshImage(string $etag, int $lastModified): bool
+    {
+        $ifNoneMatch = trim($this->request->getHeaderLine('If-None-Match'));
+        if ($ifNoneMatch !== '' && $ifNoneMatch === $etag) {
+            return true;
+        }
+
+        $ifModifiedSince = $this->request->getHeaderLine('If-Modified-Since');
+        if ($ifModifiedSince === '') {
+            return false;
+        }
+
+        $clientTime = strtotime($ifModifiedSince);
+        return $clientTime !== false && $clientTime >= $lastModified;
+    }
+
+    private function etagFromFile(string $filePath): string
+    {
+        return '"' . md5($filePath . '|' . filesize($filePath) . '|' . filemtime($filePath)) . '"';
+    }
+
+    private function sourceVersion(string $path): string
+    {
+        if (filter_var($path, FILTER_VALIDATE_URL)) {
+            return '';
+        }
+
+        $fullPath = ROOTPATH . 'public/' . rawurldecode($path);
+        if (!file_exists($fullPath)) {
+            return '';
+        }
+
+        return filesize($fullPath) . '|' . filemtime($fullPath);
+    }
 }

@@ -12,10 +12,31 @@
         ['href' => base_url('logout'),       'icon' => 'logout',                  'label' => 'Keluar',    'page' => 'logout', 'danger' => true],
     ];
 ?>
-<nav class="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-stretch safe-bottom">
+<nav class="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-stretch overflow-x-auto safe-bottom">
     <?php foreach ($navItems as $item): ?>
+        <?php if ($item['page'] === 'logout'): ?>
+            <div class="notification-widget flex-none w-16">
+                <button type="button" data-notification-bell class="relative w-full h-full flex flex-col items-center justify-center py-2 gap-0.5 text-xs font-medium text-slate-400 active:text-indigo-600 transition-all duration-200">
+                    <span class="relative">
+                        <span class="material-symbols-outlined text-[22px]">notifications</span>
+                        <span data-notification-badge class="absolute -top-0.5 -right-1 min-w-4 h-4 px-1 bg-red-500 text-white text-[9px] font-black rounded-full hidden items-center justify-center leading-none"></span>
+                    </span>
+                    <span class="text-[10px] font-semibold">Notif</span>
+                </button>
+
+                <div data-notification-dropdown class="fixed left-3 right-3 bottom-[4.75rem] max-h-[70dvh] bg-white rounded-2xl shadow-2xl border border-slate-100 hidden z-[70] transform opacity-0 scale-95 transition-all origin-bottom">
+                    <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                        <h3 class="font-bold text-slate-900">Notifikasi</h3>
+                        <button type="button" data-mark-all-read class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Tandai semua dibaca</button>
+                    </div>
+                    <div data-notification-list class="max-h-[54dvh] overflow-y-auto custom-scrollbar">
+                        <div class="p-6 text-center text-slate-400 text-sm">Memuat notifikasi...</div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
         <?php $isActive = $activePage === $item['page']; ?>
-        <a href="<?= $item['href'] ?>" class="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-xs font-medium transition-all duration-200 <?= ($item['danger'] ?? false) ? 'text-red-400 active:text-red-600' : ($isActive ? 'text-indigo-600' : 'text-slate-400 active:text-indigo-600') ?>">
+        <a href="<?= $item['href'] ?>" class="flex-none w-16 flex flex-col items-center justify-center py-2 gap-0.5 text-xs font-medium transition-all duration-200 <?= ($item['danger'] ?? false) ? 'text-red-400 active:text-red-600' : ($isActive ? 'text-indigo-600' : 'text-slate-400 active:text-indigo-600') ?>">
             <span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' <?= $isActive ? '1' : '0' ?>"><?= $item['icon'] ?></span>
             <span class="text-[10px] font-semibold"><?= $item['label'] ?></span>
         </a>
@@ -70,7 +91,7 @@
             <?php if ($creatorProfile): ?>
                 <a href="<?= base_url('creator/dashboard') ?>" class="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-xs border border-indigo-100 hover:bg-indigo-100 transition-all text-center">
                     <span class="material-symbols-outlined text-sm">potted_plant</span>
-                    Login sebagai <?= $creatorProfile['display_name'] ?>
+                    Creator Page <?= $creatorProfile['display_name'] ?>
                 </a>
             <?php else: ?>
                 <button onclick="openCreatorModal()" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-all text-center">
@@ -208,4 +229,133 @@ document.addEventListener('keydown', (e) => {
     from { opacity: 0; transform: scale(0.95) translateY(10px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
+
+#mobile-refresh-indicator {
+    position: fixed;
+    top: calc(0.75rem + env(safe-area-inset-top));
+    left: 50%;
+    z-index: 9998;
+    display: none;
+    transform: translate(-50%, -120%);
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.14);
+    color: #4F46E5;
+    font-size: 0.72rem;
+    font-weight: 800;
+    pointer-events: none;
+    transition: transform 160ms ease, opacity 160ms ease;
+}
+
+#mobile-refresh-indicator.is-visible {
+    display: flex;
+    opacity: 1;
+}
+
+#mobile-refresh-indicator.is-ready .material-symbols-outlined {
+    transform: rotate(180deg);
+}
+
+#mobile-refresh-indicator.is-loading .material-symbols-outlined {
+    animation: refreshSpin 0.8s linear infinite;
+}
+
+@keyframes refreshSpin {
+    to { transform: rotate(360deg); }
+}
 </style>
+
+<div id="mobile-refresh-indicator" aria-hidden="true">
+    <span class="material-symbols-outlined text-base">keyboard_arrow_down</span>
+    <span id="mobile-refresh-text">Tarik untuk refresh</span>
+</div>
+
+<script>
+(function () {
+    if (!window.matchMedia || !window.matchMedia('(max-width: 1023px)').matches) return;
+    if (window.__nusaPullToRefreshReady) return;
+    window.__nusaPullToRefreshReady = true;
+
+    const indicator = document.getElementById('mobile-refresh-indicator');
+    const label = document.getElementById('mobile-refresh-text');
+    const threshold = 86;
+    let startY = 0;
+    let pullDistance = 0;
+    let tracking = false;
+    let scrollTarget = null;
+
+    function findScrollable(el) {
+        while (el && el !== document.body && el !== document.documentElement) {
+            const style = window.getComputedStyle(el);
+            const canScroll = /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight;
+            if (canScroll) return el;
+            el = el.parentElement;
+        }
+        return document.scrollingElement || document.documentElement;
+    }
+
+    function isAtTop(el) {
+        return (el ? el.scrollTop : window.scrollY) <= 0;
+    }
+
+    function resetIndicator() {
+        pullDistance = 0;
+        tracking = false;
+        indicator.classList.remove('is-visible', 'is-ready', 'is-loading');
+        indicator.style.transform = 'translate(-50%, -120%)';
+        label.textContent = 'Tarik untuk refresh';
+    }
+
+    document.addEventListener('touchstart', function (event) {
+        if (event.touches.length !== 1) return;
+        const target = event.target;
+        if (target.closest && target.closest('input, textarea, select, button, a')) return;
+
+        scrollTarget = findScrollable(target);
+        if (!isAtTop(scrollTarget)) return;
+
+        startY = event.touches[0].clientY;
+        tracking = true;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function (event) {
+        if (!tracking || event.touches.length !== 1 || !isAtTop(scrollTarget)) return;
+
+        pullDistance = Math.max(0, event.touches[0].clientY - startY);
+        if (pullDistance < 10) return;
+
+        const eased = Math.min(74, pullDistance * 0.45);
+        indicator.classList.add('is-visible');
+        indicator.style.transform = 'translate(-50%, ' + eased + 'px)';
+
+        if (pullDistance >= threshold) {
+            indicator.classList.add('is-ready');
+            label.textContent = 'Lepas untuk refresh';
+        } else {
+            indicator.classList.remove('is-ready');
+            label.textContent = 'Tarik untuk refresh';
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchend', function () {
+        if (!tracking) return;
+
+        if (pullDistance >= threshold && isAtTop(scrollTarget)) {
+            indicator.classList.add('is-visible', 'is-loading');
+            indicator.classList.remove('is-ready');
+            indicator.style.transform = 'translate(-50%, 74px)';
+            label.textContent = 'Memuat ulang...';
+            window.location.reload();
+            return;
+        }
+
+        resetIndicator();
+    }, { passive: true });
+
+    document.addEventListener('touchcancel', resetIndicator, { passive: true });
+})();
+</script>

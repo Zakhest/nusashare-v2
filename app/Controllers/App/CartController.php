@@ -11,6 +11,9 @@ use App\Models\CreditModel;
 use App\Models\TransactionModel;
 use App\Models\UserModel;
 use App\Models\CreatorProfileModel;
+use App\Services\NotificationService;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 
 class CartController extends BaseController
 {
@@ -43,7 +46,7 @@ class CartController extends BaseController
         $totalPrice = 0;
         foreach ($cartItems as $item) {
             if ($item['is_paid']) {
-                $totalPrice += (int)$item['price'];
+                $totalPrice += $this->getPurchasePrice($item);
             }
         }
 
@@ -149,7 +152,7 @@ class CartController extends BaseController
         // Hitung total karya berbayar
         $totalPrice = 0;
         foreach ($cartItems as $item) {
-            if ($item['is_paid']) $totalPrice += (int)$item['price'];
+            if ($item['is_paid']) $totalPrice += $this->getPurchasePrice($item);
         }
 
         if ($balance < $totalPrice) {
@@ -165,7 +168,7 @@ class CartController extends BaseController
         foreach ($cartItems as $item) {
             if (!$item['is_paid']) continue;
 
-            $price = (int)$item['price'];
+            $price = $this->getPurchasePrice($item);
             $newBalance -= $price;
 
             // Reward kreator
@@ -180,16 +183,20 @@ class CartController extends BaseController
                     $creditModel->insert(['user_id' => $work['creator_id'], 'balance' => $price]);
                 }
                 // Catat transaksi kreator
+                $_buyerUser = (new UserModel())->find($userId);
+                $buyerUsername = '@' . ($_buyerUser['username'] ?? 'user_id:' . $userId);
+                $_creatorUser = (new UserModel())->find($work['creator_id']);
+                $creatorUsername = '@' . ($_creatorUser['username'] ?? 'user_id:' . $work['creator_id']);
                 $transactionModel->record(
                     $work['creator_id'], $price, 'in', 'download',
-                    $item['work_id'], 'Karya diunduh: ' . $item['title']
+                    $item['work_id'], 'Karya diunduh oleh ' . $buyerUsername . ': ' . $item['title']
                 );
             }
 
             // Catat transaksi pembeli
             $transactionModel->record(
                 $userId, $price, 'out', 'download',
-                $item['work_id'], 'Download karya: ' . $item['title']
+                $item['work_id'], 'Download karya ' . $creatorUsername . ': ' . $item['title']
             );
         }
 
@@ -202,6 +209,23 @@ class CartController extends BaseController
 
         if ($db->transStatus() === false) {
             return redirect()->to('me/cart')->with('error', 'Gagal memproses pembayaran. Silakan coba lagi.');
+        }
+
+        // Kirim notifikasi per item ke masing-masing kreator
+        $notifService = new NotificationService();
+        $_buyerUser = (new UserModel())->find($userId);
+        $buyerUsername = $_buyerUser['username'] ?? $userId;
+        foreach ($cartItems as $item) {
+            if (!$item['is_paid']) continue;
+            $work = $this->contentModel->find($item['work_id']);
+            if ($work && $work['creator_id'] !== $userId) {
+                $notifService->notifyPurchase(
+                    $work['creator_id'],
+                    $buyerUsername,
+                    $item['title'],
+                    (int)$item['work_id']
+                );
+            }
         }
 
         // Simpan daftar work_id ke session biasa (tidak flash) supaya bisa diakses di download-all
@@ -299,10 +323,14 @@ class CartController extends BaseController
             }
         }
 
+        // Lepas session lock sebelum proses file berat
+        // agar request berikutnya (iframe/fetch lain) tidak deadlock nunggu session
+        session()->close();
+
         if ($work['content_type'] === 'image') {
             return $this->_downloadImagesAsZip($work);
         } else {
-            return $this->_downloadChaptersAsPdf($work);
+            return $this->_downloadChaptersAsPdf($work, $userId);
         }
     }
 
@@ -352,7 +380,14 @@ class CartController extends BaseController
     }
 
     // ─── Private: PDF untuk karya teks/novel ─────
-    private function _downloadChaptersAsPdf(array $work)
+    private function getPurchasePrice(array $item): int
+    {
+        $purchasePrice = (int)($item['purchase_price'] ?? 0);
+
+        return $purchasePrice > 0 ? $purchasePrice : (int)($item['price'] ?? 0);
+    }
+
+    private function _downloadChaptersAsPdf(array $work, string $buyerUserId = '')
     {
         $chapterModel = new ChapterModel();
         $chapters     = $chapterModel->getByWork($work['id']);
@@ -360,6 +395,11 @@ class CartController extends BaseController
         if (empty($chapters)) {
             return redirect()->to('me/cart')->with('error', 'Tidak ada bab yang tersedia untuk diunduh.');
         }
+
+        // Ambil info pembeli dari database agar pasti valid
+        $userModel     = new UserModel();
+        $buyerUser     = ($buyerUserId !== '') ? $userModel->find($buyerUserId) : null;
+        $buyerUsername = $buyerUser['username'] ?? $buyerUserId;
 
         // Build HTML konten
         $title   = htmlspecialchars($work['title']);
@@ -374,36 +414,62 @@ class CartController extends BaseController
 
         $html  = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
         $html .= '<style>';
-        $html .= 'body{font-family:Georgia,serif;color:#1a1a1a;margin:0;padding:0;font-size:13pt;line-height:1.8;}';
-        $html .= '.cover{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(135deg,#4F46E5,#22D3EE);color:white;padding:40px;}';
-        $html .= '.cover h1{font-size:32pt;font-weight:900;margin-bottom:12px;}';
-        $html .= '.cover .type{font-size:10pt;letter-spacing:4px;text-transform:uppercase;opacity:.7;margin-bottom:8px;}';
-        $html .= '.cover .by{font-size:12pt;opacity:.85;}';
-        $html .= '.cover .brand{position:absolute;bottom:40px;font-size:9pt;opacity:.5;letter-spacing:2px;}';
+        $html .= '@page{margin:0;}';
+        $html .= 'body{font-family:"DejaVu Sans",Georgia,serif;color:#1a1a1a;margin:0;padding:0;font-size:13pt;line-height:1.8;}';
+        $html .= '.cover{height:297mm;background:#4F46E5;color:white;text-align:center;page-break-after:always;}';
+        $html .= '.cover-inner{padding:95mm 28mm 0;}';
+        $html .= '.cover h1{font-size:38pt;font-weight:900;line-height:1.15;margin:0 0 18px;}';
+        $html .= '.cover .type{font-size:10pt;letter-spacing:4px;text-transform:uppercase;opacity:.75;margin-bottom:14px;}';
+        $html .= '.cover .by-label{font-size:10pt;letter-spacing:2px;text-transform:uppercase;opacity:.65;margin-top:26px;}';
+        $html .= '.cover .by{font-size:18pt;font-weight:700;margin-top:6px;}';
+        $html .= '.cover .brand{position:absolute;bottom:24mm;left:0;right:0;font-size:9pt;opacity:.65;letter-spacing:2px;text-align:center;}';
+        $html .= '.cover .buyer-info{margin-top:36px;padding:14px 20px;background:rgba(255,255,255,0.12);border-radius:8px;display:inline-block;}';
+        $html .= '.cover .buyer-info .buyer-label{font-size:8pt;letter-spacing:3px;text-transform:uppercase;opacity:.7;margin-bottom:6px;}';
+        $html .= '.cover .buyer-info .buyer-name{font-size:14pt;font-weight:700;}';
+        $html .= '.cover .buyer-info .buyer-id{font-size:8pt;opacity:.6;margin-top:4px;letter-spacing:1px;}';
         $html .= '.page-break{page-break-before:always;}';
         $html .= '.chapter{padding:60px 80px;}';
         $html .= '.chapter h2{font-size:18pt;font-weight:700;border-bottom:2px solid #4F46E5;padding-bottom:10px;margin-bottom:30px;color:#4F46E5;}';
         $html .= '.chapter p{text-indent:2em;margin:0 0 1em;}';
+        $html .= '.comic-page{page-break-inside:avoid;margin:0 0 18px;text-align:center;}';
+        $html .= '.comic-page img{max-width:100%;height:auto;display:block;margin:0 auto;}';
         $html .= '.watermark{position:fixed;bottom:20px;right:20px;font-size:8pt;color:#ccc;letter-spacing:1px;}';
         $html .= '</style></head><body>';
 
         // Cover page
         $html .= '<div class="cover">';
+        $html .= '<div class="cover-inner">';
         $html .= '<div class="type">' . $typeLabel . '</div>';
         $html .= '<h1>' . $title . '</h1>';
-        $html .= '<div class="by">oleh ' . $creator . '</div>';
+        $html .= '<div class="by-label">Kreator</div>';
+        $html .= '<div class="by">' . $creator . '</div>';
+        $html .= '<div class="buyer-info">';
+        $html .= '<div class="buyer-label">Dimiliki oleh</div>';
+        $html .= '<div class="buyer-name">@' . htmlspecialchars($buyerUsername) . '</div>';
+        $html .= '<div class="buyer-id">User ID: ' . htmlspecialchars($buyerUserId) . '</div>';
+        $html .= '</div>';
+        $html .= '</div>';
         $html .= '<div class="brand">NusaShare &mdash; Platform Kreator Indonesia</div>';
         $html .= '</div>';
 
         // Chapters
         foreach ($chapters as $i => $chapter) {
-            $html .= '<div class="chapter page-break">';
+            $chapterClass = $i === 0 ? 'chapter' : 'chapter page-break';
+            $html .= '<div class="' . $chapterClass . '">';
             $html .= '<h2>Bab ' . ($chapter['order_num'] ?? ($i + 1)) . ': ' . htmlspecialchars($chapter['title']) . '</h2>';
-            if (!empty($chapter['body'])) {
-                // Render paragraf dengan bersih
-                $paragraphs = preg_split('/\r?\n\r?\n/', trim($chapter['body']));
+            if ($work['content_type'] === 'comic') {
+                $html .= $this->renderComicChapterForPdf($chapter['body'] ?? '');
+            } elseif (!empty($chapter['body'])) {
+                $body = $this->normalizeChapterBodyForPdf($chapter['body']);
+                $paragraphs = preg_split('/\r?\n\r?\n/', trim($body));
+
                 foreach ($paragraphs as $p) {
-                    $html .= '<p>' . nl2br(htmlspecialchars(trim($p))) . '</p>';
+                    $p = trim($p);
+                    if ($p === '') {
+                        continue;
+                    }
+
+                    $html .= '<p>' . nl2br(htmlspecialchars($p)) . '</p>';
                 }
             } else {
                 $html .= '<p><em>Konten bab ini tidak tersedia.</em></p>';
@@ -414,13 +480,71 @@ class CartController extends BaseController
         $html .= '<div class="watermark">NusaShare.id &copy; ' . date('Y') . '</div>';
         $html .= '</body></html>';
 
-        // Kirim sebagai file HTML yang diunduh (bisa dibuka sebagai e-book di browser)
-        // Namanya .html agar bisa dibuka rapi — user bisa Ctrl+P → Save as PDF
-        $fileName = 'NusaShare_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $work['title']) . '.html';
+        // Render HTML bab menjadi PDF asli sebelum dikirim ke browser.
+        $fileName = 'NusaShare_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $work['title']) . '.pdf';
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('defaultFont', 'DejaVu Sans');
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $pdf = $dompdf->output();
 
         return $this->response
-            ->setHeader('Content-Type', 'text/html; charset=UTF-8')
+            ->setHeader('Content-Type', 'application/pdf')
             ->setHeader('Content-Disposition', 'attachment; filename="' . $fileName . '"')
-            ->setBody($html);
+            ->setHeader('Content-Length', (string) strlen($pdf))
+            ->setBody($pdf);
+    }
+
+    private function renderComicChapterForPdf(string $body): string
+    {
+        $images = json_decode($body, true);
+        if (!is_array($images) || empty($images)) {
+            return '<p><em>Tidak ada gambar dalam bab ini.</em></p>';
+        }
+
+        $html = '';
+        foreach ($images as $image) {
+            $src = $this->resolveChapterImageUrl((string)$image);
+            $html .= '<div class="comic-page"><img src="' . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') . '" alt="Halaman komik"></div>';
+        }
+
+        return $html;
+    }
+
+    private function resolveChapterImageUrl(string $path): string
+    {
+        if (filter_var($path, FILTER_VALIDATE_URL)) {
+            return $path;
+        }
+
+        if (strpos($path, 'chapters/') === 0) {
+            $parts = explode('/', $path);
+            $workId = $parts[1] ?? 0;
+            $file = $parts[2] ?? basename($path);
+
+            return base_url('image/chapter/' . $workId . '/' . $file);
+        }
+
+        return base_url($path);
+    }
+
+    private function normalizeChapterBodyForPdf(string $body): string
+    {
+        $body = html_entity_decode($body, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $body = preg_replace('/<\s*br\s*\/?\s*>/i', "\n", $body);
+        $body = preg_replace('/<\s*\/\s*p\s*>\s*<\s*p[^>]*>/i', "\n\n", $body);
+        $body = preg_replace('/<\s*p[^>]*>/i', '', $body);
+        $body = preg_replace('/<\s*\/\s*p\s*>/i', "\n\n", $body);
+        $body = strip_tags($body);
+        $body = preg_replace("/[ \t]+\r?\n/", "\n", $body);
+        $body = preg_replace("/\n{3,}/", "\n\n", $body);
+
+        return trim($body);
     }
 }

@@ -117,11 +117,11 @@
                             <div class="flex flex-wrap justify-center md:justify-start gap-6 mt-8">
                                 <div class="text-center md:text-left">
                                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Followers</p>
-                                    <p id="followerCount" class="text-xl font-black text-slate-900">...</p>
+                                    <p id="followerCount" class="text-xl font-black text-slate-900"><?= number_format($followerCount ?? 0) ?></p>
                                 </div>
                                 <div class="text-center md:text-left">
                                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Readers</p>
-                                    <p id="readerCount" class="text-xl font-black text-slate-900">...</p>
+                                    <p id="readerCount" class="text-xl font-black text-slate-900"><?= number_format($readerCount ?? 0) ?></p>
                                 </div>
                                 <div class="text-center md:text-left">
                                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Karya</p>
@@ -159,13 +159,22 @@
                                 <?php 
                                     $coverUrl = base_url('image/cover/' . $work['id']);
                                     if (empty($work['cover_url'])) {
-                                        $coverUrl = base_url('assets/img/default-cover.jpg');
+                                        $coverUrl = base_url('assets/icon/logonuss.png');
+                                    }
+
+                                    $isPaid = !empty($work['is_paid']);
+                                    $displayPrice = (int)($work['purchase_price'] ?? 0);
+                                    if ($displayPrice <= 0) {
+                                        $displayPrice = (int)($work['price'] ?? 0);
                                     }
                                 ?>
 
                                 <a href="<?= base_url('works/' . $work['id']) ?>" class="art-card group cursor-pointer block">
                                     <div class="relative aspect-[4/3] bg-slate-100 overflow-hidden border-b border-slate-100">
                                         <img src="<?= $coverUrl ?>" alt="<?= esc($work['title']) ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+                                        <span class="absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm <?= $isPaid ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200' ?>">
+                                            <?= $isPaid ? number_format($displayPrice) . ' CC' : 'Gratis' ?>
+                                        </span>
                                     </div>
                                     <div class="p-4">
                                         <h3 class="font-bold text-slate-900 leading-tight mb-2 truncate group-hover:text-indigo-600 transition-colors"><?= esc($work['title']) ?></h3>

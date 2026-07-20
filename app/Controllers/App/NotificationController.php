@@ -25,8 +25,8 @@ class NotificationController extends BaseController
         if (!$userId) {
             return $this->response->setJSON([
                 'status'  => 'error',
-                'message' => 'Unauthorized' // Return error if not logged in
-            ]);
+                'message' => 'Unauthorized'
+            ])->setStatusCode(401);
         }
 
         $limit = $this->request->getGet('limit') ?? 10;
@@ -50,7 +50,7 @@ class NotificationController extends BaseController
     {
         $userId = session()->get('userId');
         if (!$userId) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Unauthorized']);
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Unauthorized'])->setStatusCode(401);
         }
 
         $this->notificationModel->where('user_id', $userId)
@@ -72,7 +72,7 @@ class NotificationController extends BaseController
     {
         $userId = session()->get('userId');
         if (!$userId) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Unauthorized']);
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Unauthorized'])->setStatusCode(401);
         }
 
         $notif = $this->notificationModel->find($id);

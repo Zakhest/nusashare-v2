@@ -1,20 +1,25 @@
 # NusaShare
 
-NusaShare adalah aplikasi web berbagi karya untuk kreator dan pembaca. Platform ini menyediakan ruang publik untuk menemukan karya, area pengguna untuk membaca dan mendukung kreator, serta dashboard kreator untuk mengelola konten dan monetisasi.
+NusaShare adalah aplikasi web berbagi karya untuk kreator dan pembaca. Platform ini menyediakan ruang publik untuk menemukan karya, area pengguna untuk membaca dan mendukung kreator, dashboard kreator untuk mengelola konten dan monetisasi, serta panel admin untuk memantau operasional platform.
 
-Proyek ini dibangun dengan CodeIgniter 4 dan berjalan di atas PHP 8.1 atau lebih baru.
+Proyek ini dibangun dengan CodeIgniter 4 dan berjalan di atas PHP 8.1 atau lebih baru. Status proyek saat ini masih PoC/produk pengembangan aktif.
 
-## Fitur Utama
+## Ringkasan Fitur Terbaru
 
-- Landing page dan halaman legal.
-- Registrasi, login, lupa password, dan reset password untuk pengguna.
-- Area eksplorasi karya dengan halaman detail, baca, dan download.
-- Dashboard pengguna untuk profil, bookmark, follow creator, cart, notifikasi, dan riwayat interaksi.
-- Sistem Cooling Credit (CC) untuk top up, membuka karya premium, dan mendukung kreator.
-- Area kreator untuk login/register, dashboard, manajemen konten, chapter, galeri gambar, publish/archive, statistik, monetisasi, dan pengaturan profil.
-- Interaksi karya: like, comment, bookmark, unlock karya, dan unlock chapter.
-- API v1 untuk integrasi mobile atau client eksternal.
-- Proxy gambar untuk cover, galeri, profil, dan gambar chapter.
+- Landing page, halaman legal, login/register user, login/register kreator, forgot password, dan reset password.
+- Explore karya dengan spotlight, filter genre/tipe, mode gallery, mode story, pencarian karya, dan pencarian user/kreator.
+- Format konten: novel, light novel, comic, text, image, dan PDF pada skema konten.
+- Detail karya, reader chapter, navigasi chapter, komentar per karya/chapter, like, bookmark, follow kreator, dan profil publik.
+- View counter dengan threshold baca 2 menit agar statistik lebih bermakna.
+- Reading history dan resume terakhir dibaca untuk pengguna login.
+- Sistem Cooling Credit (CC) untuk top up, unlock karya, unlock chapter, checkout cart, download karya gambar, dan pendapatan kreator.
+- Konten berbayar mendukung akses full, akses per chapter, harga preview, harga beli permanen, timer preview, watermark gambar, dan chapter terkunci.
+- Dashboard pengguna untuk profil, bookmark/koleksi, cart, follows, top up, dan notifikasi.
+- Dashboard kreator untuk statistik ringkas, manajemen karya, chapter, galeri gambar, publish/archive/delete, statistik karya, monetisasi, penarikan dummy, riwayat transaksi, export Excel/PDF, dan receipt transaksi.
+- Panel admin `alpha-admin` untuk dashboard statistik, user management, creator management, status Starsoul, penyesuaian saldo CC, transaksi, top up, ekonomi, konten, laporan, gallery, CMS landing/page/FAQ, audit, sistem, dan notifikasi.
+- API v1 untuk login/register/logout, daftar karya, detail karya, profil user, like/comment/bookmark, saldo top up, dan checkout top up.
+- Proxy gambar untuk cover, galeri, profil, gambar chapter, remote image, blur/lock state, dan watermark.
+- Notification service terpusat untuk follow, like, comment, purchase, unlock, unlock chapter, top up, dan notifikasi sistem.
 
 ## Teknologi
 
@@ -24,24 +29,30 @@ Proyek ini dibangun dengan CodeIgniter 4 dan berjalan di atas PHP 8.1 atau lebih
 - Composer
 - Dompdf
 - PHPUnit
-- CSS/JavaScript native, Tailwind CDN pada beberapa halaman
+- CSS/JavaScript native
+- Tailwind CDN pada beberapa halaman
+- Chart.js pada area admin/dashboard tertentu
+- ZipArchive untuk paket download gambar
 
 ## Struktur Folder
 
 ```text
 app/
+  Commands/        Command lokal tambahan
   Config/          Konfigurasi aplikasi, route, filter, database, session
-  Controllers/     Controller web, creator area, dan API
+  Controllers/     Controller web, creator area, admin, dan API
   Database/        Migration dan seeder
   Filters/         Auth filter untuk web dan API
   Models/          Model database
-  Views/           Tampilan halaman publik, user, creator, auth, works
+  Services/        Service konten, file upload, dan notifikasi
+  ThirdParty/      Library vendor lokal tambahan
+  Views/           Tampilan publik, user, creator, admin, auth, works
 assets/            Asset CSS, JavaScript, dan icon aplikasi
-public/            Public document root dan upload publik
+public/            Public document root dan asset publik
 tests/             Test PHPUnit
 tmp/               Script sementara untuk perubahan database
 vendor/            Dependency Composer
-writable/          Log, session, upload, cache, debugbar
+writable/          Log, session, upload, download sementara, cache, debugbar
 ```
 
 ## Modul Aplikasi
@@ -49,12 +60,16 @@ writable/          Log, session, upload, cache, debugbar
 ### Public Area
 
 - `/` landing page
-- `/explore` eksplorasi karya
-- `/search` pencarian karya
+- `/explore` eksplorasi semua karya
+- `/explore/gallery` eksplorasi karya gambar
+- `/explore/story` eksplorasi novel, light novel, dan comic
+- `/search` pencarian karya dan pengguna
 - `/works/{id}` detail karya
 - `/works/{id}/read/{chapterId}` baca chapter
-- `/works/{id}/download` download karya
-- `/user/{username}` profil publik pengguna atau kreator
+- `/works/{id}/download` download ZIP untuk karya gambar gratis
+- `/content/{segment}` alias halaman konten
+- `/user/{username}` profil publik pengguna/kreator
+- `/creator/{username}` profil publik kreator
 - `/terms` dan `/privacy`
 
 ### User Area
@@ -67,7 +82,15 @@ Area ini memerlukan login sebagai user.
 - `/me/cart`
 - `/me/follows`
 - `/topup`
-- Like, comment, bookmark, follow, cart checkout, unlock karya, unlock chapter, dan notifikasi.
+- `POST /works/{id}/like`
+- `POST /works/{id}/comment`
+- `POST /works/{id}/unlock`
+- `POST /chapters/{chapterId}/unlock`
+- `POST /bookmark/{id}`
+- `POST /follow/{username}`
+- `GET /notifications/fetch`
+- `POST /notifications/read-all`
+- `POST /notifications/{id}/read`
 
 ### Creator Area
 
@@ -78,11 +101,38 @@ Area ini memerlukan login sebagai creator.
 - `/creator/dashboard`
 - `/creator/content`
 - `/creator/content/create`
+- `/creator/content/{id}/edit`
 - `/creator/content/{id}/chapters`
+- `/creator/content/{id}/chapters/create`
 - `/creator/content/{id}/images`
+- `/creator/content/{id}/stats`
 - `/creator/stats`
 - `/creator/monetization`
+- `/creator/monetization/history`
+- `/creator/monetization/export/excel`
+- `/creator/monetization/export/pdf`
+- `/creator/monetization/receipt/{id}`
 - `/creator/settings`
+
+Fitur creator mencakup draft/publish/archive/delete, upload cover dan galeri, chapter editor, chapter lock, pengaturan harga CC, status ongoing/ended, statistik karya, monetisasi, dan profil kreator.
+
+### Admin Area
+
+Area ini memerlukan login sebagai admin.
+
+- `/alpha-admin`
+- `/alpha-admin/api/users`
+- `/alpha-admin/api/users/{id}`
+- `/alpha-admin/api/users/{id}/status`
+- `/alpha-admin/api/users/{id}/adjust-cc`
+- `/alpha-admin/api/creators`
+- `/alpha-admin/api/creators/{id}`
+- `/alpha-admin/api/creators/{id}/status`
+- `/alpha-admin/api/creators/{id}/starsoul-status`
+- `/alpha-admin/api/transactions`
+- `/alpha-admin/api/transactions/stats`
+
+Panel admin menampilkan statistik user, kreator, karya, CC beredar, revenue/top up, transaksi terbaru, top creator, breakdown karya, grafik registrasi, dan grafik top up. Section admin view juga sudah disiapkan untuk user management, creator management, content works/reports/gallery, finance transactions/topup/economy, CMS pages/landing/FAQ, audit, system settings, dan notification settings.
 
 ### API v1
 
@@ -107,6 +157,38 @@ Endpoint utama:
 - `GET /api/v1/topup/balance`
 - `POST /api/v1/topup/checkout`
 
+## Alur Fitur Penting
+
+### Cooling Credit (CC)
+
+- User melakukan top up dari paket CC yang tersedia.
+- CC digunakan untuk unlock karya, unlock chapter, checkout cart, dan download konten berbayar yang mendukung pembelian.
+- Transaksi dicatat sebagai `in` atau `out` dengan kategori seperti `topup`, `unlock`, `download`, dan `withdraw`.
+- Kreator menerima saldo dari unlock/download karya dan dapat melihat riwayat monetisasi.
+- Admin dapat melihat statistik transaksi dan melakukan penyesuaian saldo CC user.
+
+### Konten dan Monetisasi
+
+- Karya dapat disimpan sebagai draft atau langsung published.
+- Status publik yang tampil di explore adalah `published`, `curated`, dan `museum`.
+- Karya chapter-based mencakup text, novel, light novel, dan comic.
+- Karya image menggunakan galeri gambar, proxy image, watermark, blur lock, preview timer, dan download ZIP untuk konten gratis.
+- Chapter dapat dikunci dengan harga CC masing-masing.
+- Harga karya mendukung `price` untuk akses/preview dan `purchase_price` untuk pembelian permanen.
+
+### Notifikasi
+
+Notifikasi dibuat melalui service terpusat untuk event:
+
+- Follow kreator
+- Like karya
+- Komentar baru
+- Purchase/download
+- Unlock karya
+- Unlock chapter
+- Top up berhasil
+- System notification
+
 ## Instalasi Lokal
 
 Pastikan PHP, Composer, dan MySQL/MariaDB sudah tersedia. Jika memakai XAMPP, tempatkan proyek di folder `htdocs`.
@@ -123,7 +205,7 @@ composer install
 cp env .env
 ```
 
-Jika file `.env` sudah ada, cukup periksa konfigurasi berikut:
+Jika file `.env` sudah ada, periksa konfigurasi berikut:
 
 ```dotenv
 CI_ENVIRONMENT = development
@@ -193,15 +275,20 @@ Migration yang tersedia mencakup fitur:
 - Notifications
 - Cart items
 - Transactions
+- Purchase price karya
+- Perbaikan tipe `notifications.user_id`
 
 Ada juga script manual database di root dan folder `tmp/`. Gunakan script tersebut dengan hati-hati, terutama jika database sudah berisi data produksi.
 
 ## Penyimpanan File
 
 - Upload runtime tersimpan di `writable/uploads`.
+- Download sementara tersimpan di `writable/downloads` atau folder upload runtime sesuai proses.
 - Cover publik tersimpan di `public/uploads/covers`.
+- Asset publik tersimpan di `public/assets`.
 - Log aplikasi tersimpan di `writable/logs`.
 - Session dan debugbar tersimpan di `writable/session` dan `writable/debugbar`.
+- Upload cover/arts juga dapat dikirim ke remote upload service melalui `App\Services\File\RemoteUploadService`.
 
 Pastikan folder `writable` dapat ditulis oleh web server.
 
@@ -210,19 +297,21 @@ Pastikan folder `writable` dapat ditulis oleh web server.
 - Auto route dimatikan di `app/Config/Routes.php`.
 - Area user menggunakan filter `auth:user`.
 - Area creator menggunakan filter `auth:creator`.
+- Area admin menggunakan filter `auth:admin`.
 - API protected menggunakan filter `api_auth:user`.
-- Jangan commit kredensial asli di `.env`.
+- Jangan commit kredensial asli di `.env` atau service upload.
 - Untuk deployment publik, arahkan document root web server ke folder `public`.
+- Review kembali konfigurasi remote upload, token, dan SSL sebelum produksi.
 
 ## Status Proyek
 
-Proyek ini sudah memiliki struktur fitur yang cukup lengkap untuk platform konten kreator, termasuk web app, creator dashboard, sistem kredit, dan API dasar. Dokumentasi teknis tambahan yang masih disarankan:
+NusaShare sudah memiliki struktur fitur yang cukup lengkap untuk platform konten kreator, termasuk web app, creator dashboard, admin panel, sistem kredit, notifikasi, monetisasi, dan API dasar. Dokumentasi teknis lanjutan yang masih disarankan:
 
 - Skema database lengkap.
 - Daftar role dan permission.
-- Alur transaksi Cooling Credit.
+- Alur transaksi Cooling Credit secara detail.
 - Contoh request/response API.
 - Panduan deployment produksi.
+- Panduan konfigurasi remote upload.
 
-Ini masih PoC
 # nusashare-v2

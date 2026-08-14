@@ -37,23 +37,18 @@ class ContentController extends BaseController
 
     public function index()
     {
-        // Check if logged in as creator
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'creator') {
-            return redirect()->to(base_url('creator/login'));
-        }
+        if ($r = $this->guardCreator()) return $r;
 
-        $userId = session()->get('userId');
+        $userId   = session()->get('userId');
         $username = session()->get('username');
 
-        $userModel = new UserModel();
-        $contentModel = new ExploreContentModel();
+        $userModel          = new UserModel();
+        $contentModel       = new ExploreContentModel();
         $creatorProfileModel = new CreatorProfileModel();
 
-        // Get user and creator data
-        $user = $userModel->find($userId);
+        $user           = $userModel->find($userId);
         $creatorProfile = $creatorProfileModel->find($userId);
 
-        // Get all works by this creator
         $works = $contentModel->where('creator_id', $userId)
                               ->orderBy('created_at', 'DESC')
                               ->findAll();
@@ -64,7 +59,7 @@ class ContentController extends BaseController
             'user'           => $user,
             'creatorProfile' => $creatorProfile,
             'works'          => $works,
-            'activePage'     => 'content'
+            'activePage'     => 'content',
         ];
 
         return view('creator/content/index', $data);
@@ -72,18 +67,15 @@ class ContentController extends BaseController
 
     public function create()
     {
-        // Check if logged in as creator
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'creator') {
-            return redirect()->to(base_url('creator/login'));
-        }
+        if ($r = $this->guardCreator()) return $r;
 
-        $userId = session()->get('userId');
+        $userId   = session()->get('userId');
         $username = session()->get('username');
 
-        $userModel = new UserModel();
+        $userModel          = new UserModel();
         $creatorProfileModel = new CreatorProfileModel();
 
-        $user = $userModel->find($userId);
+        $user           = $userModel->find($userId);
         $creatorProfile = $creatorProfileModel->find($userId);
 
         $data = [
@@ -91,7 +83,7 @@ class ContentController extends BaseController
             'username'       => $username,
             'user'           => $user,
             'creatorProfile' => $creatorProfile,
-            'activePage'     => 'content'
+            'activePage'     => 'content',
         ];
 
         return view('creator/content/create', $data);
@@ -99,25 +91,29 @@ class ContentController extends BaseController
 
     public function store()
     {
-        // Check if logged in as creator
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'creator') {
-            return redirect()->to(base_url('creator/login'));
-        }
+        if ($r = $this->guardCreator()) return $r;
 
-        $userId = session()->get('userId');
+        $userId      = session()->get('userId');
+        $contentType = $this->request->getPost('content_type');
+        $isArtikel   = ($contentType === 'artikel');
 
         // Validation rules
         $rules = [
-            'title'        => 'required|min_length[3]|max_length[255]',
-            'description'  => 'required|min_length[10]',
-            'content_type' => 'required|in_list[text,image,pdf,novel,light_novel,comic]',
-            'status'       => 'required|in_list[draft,published]',
-            'access_type'  => 'required|in_list[full,chapter]',
-            'work_status'  => 'required|in_list[ongoing,ended]',
-            'price'        => 'permit_empty|integer|greater_than_equal_to[0]',
+            'title'          => 'required|min_length[3]|max_length[255]',
+            'description'    => 'required|min_length[10]',
+            'content_type'   => 'required|in_list[text,image,pdf,novel,light_novel,comic,artikel]',
+            'status'         => 'required|in_list[draft,published]',
+            'access_type'    => 'required|in_list[full,chapter]',
+            'work_status'    => 'required|in_list[ongoing,ended]',
+            'price'          => 'permit_empty|integer|greater_than_equal_to[0]',
             'purchase_price' => 'permit_empty|integer|greater_than_equal_to[0]',
-            'cover'        => 'is_image[cover]|max_size[cover,2048]|ext_in[cover,jpg,jpeg,png,webp]'
+            'cover'          => 'permit_empty|is_image[cover]|max_size[cover,2048]|ext_in[cover,jpg,jpeg,png,webp]',
         ];
+
+        if ($isArtikel) {
+            $rules['article_body'] = 'required|min_length[10]';
+            $rules['slug']         = 'permit_empty|max_length[255]';
+        }
 
         if (!$this->validate($rules)) {
             if ($this->request->isAJAX()) {
@@ -127,30 +123,30 @@ class ContentController extends BaseController
         }
 
         $contentModel = new ExploreContentModel();
-        
+
         $data = [
-            'creator_id'   => $userId,
-            'title'        => $this->request->getPost('title'),
-            'genre'        => $this->request->getPost('genre'),
-            'description'  => $this->request->getPost('description'),
-            'content_type' => $this->request->getPost('content_type'),
-            'status'       => $this->request->getPost('status'),
-            'access_type'  => $this->request->getPost('access_type'),
-            'work_status'  => $this->request->getPost('work_status'),
-            'is_paid'      => $this->request->getPost('is_paid') ? 1 : 0,
-            'price'        => (int) $this->request->getPost('price'),
-            'purchase_price' => (int) $this->request->getPost('purchase_price'),
+            'creator_id'     => $userId,
+            'title'          => $this->request->getPost('title'),
+            'genre'          => $this->request->getPost('genre'),
+            'description'    => $this->request->getPost('description'),
+            'content_type'   => $contentType,
+            'status'         => $this->request->getPost('status'),
+            'access_type'    => $isArtikel ? 'full'  : $this->request->getPost('access_type'),
+            'work_status'    => $isArtikel ? 'ended' : $this->request->getPost('work_status'),
+            'is_paid'        => $isArtikel ? 0 : ($this->request->getPost('is_paid') ? 1 : 0),
+            'price'          => $isArtikel ? 0 : (int) $this->request->getPost('price'),
+            'purchase_price' => $isArtikel ? 0 : (int) $this->request->getPost('purchase_price'),
             'watermark_text' => $this->request->getPost('watermark_text'),
-            'timer_duration' => (int) $this->request->getPost('timer_duration'),
-            'is_locked'    => 0, // Default for new works
-            'view_count'   => 0
+            'timer_duration' => $isArtikel ? 0 : (int) $this->request->getPost('timer_duration'),
+            'is_locked'      => 0,
+            'view_count'     => 0,
         ];
 
         // Handle remote cover upload
         $cover = $this->request->getFile('cover');
         if ($cover && $cover->isValid() && !$cover->hasMoved()) {
             $remoteService = new \App\Services\File\RemoteUploadService();
-            $remoteUrl = $remoteService->upload($cover, 'cover');
+            $remoteUrl     = $remoteService->upload($cover, 'cover');
             if ($remoteUrl) {
                 $data['cover_url'] = str_replace(' ', '%20', $remoteUrl);
             } else {
@@ -164,29 +160,40 @@ class ContentController extends BaseController
         if ($contentModel->insert((object) $data)) {
             $workId = $contentModel->insertID();
 
-            // Handle multiple gallery images
-            $galleryImages = $this->request->getFiles();
-            if (isset($galleryImages['gallery_images'])) {
-                $imageModel = new \App\Models\WorkImageModel();
-                $remoteService = new \App\Services\File\RemoteUploadService();
-                $order = 1;
+            if ($isArtikel) {
+                $articleModel = new \App\Models\ArticleModel();
+                $inputSlug    = $this->request->getPost('slug');
+                $slug         = $articleModel->generateSlug(empty($inputSlug) ? $data['title'] : $inputSlug);
 
-                foreach ($galleryImages['gallery_images'] as $img) {
-                    if ($img->isValid() && !$img->hasMoved()) {
-                        $remoteUrl = $remoteService->upload($img, 'arts');
-                        if ($remoteUrl) {
-                            $imageModel->insert((object) [
-                                'work_id'   => $workId,
-                                'file_path' => str_replace(' ', '%20', $remoteUrl),
-                                'order_num' => $order++
-                            ]);
+                $articleModel->insert([
+                    'work_id' => $workId,
+                    'slug'    => $slug,
+                    'body'    => $this->request->getPost('article_body'),
+                ]);
+            } else {
+                // Handle multiple gallery images
+                $galleryImages = $this->request->getFiles();
+                if (isset($galleryImages['gallery_images'])) {
+                    $imageModel    = new \App\Models\WorkImageModel();
+                    $remoteService = new \App\Services\File\RemoteUploadService();
+                    $order         = 1;
+
+                    foreach ($galleryImages['gallery_images'] as $img) {
+                        if ($img->isValid() && !$img->hasMoved()) {
+                            $remoteUrl = $remoteService->upload($img, 'arts');
+                            if ($remoteUrl) {
+                                $imageModel->insert((object) [
+                                    'work_id'   => $workId,
+                                    'file_path' => str_replace(' ', '%20', $remoteUrl),
+                                    'order_num' => $order++,
+                                ]);
+                            }
                         }
                     }
                 }
             }
 
             if ($this->request->isAJAX()) {
-                // Return success JSON so AJAX handler can redirect
                 return $this->response->setJSON(['success' => true, 'redirect' => base_url('creator/content')]);
             }
             return redirect()->to(base_url('creator/content'))->with('message', 'Karya berhasil dibuat!');
@@ -200,18 +207,15 @@ class ContentController extends BaseController
 
     public function edit($id)
     {
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'creator') {
-            return redirect()->to(base_url('creator/login'));
-        }
+        if ($r = $this->guardCreator()) return $r;
 
         $userId   = session()->get('userId');
         $username = session()->get('username');
 
-        $contentModel       = new ExploreContentModel();
-        $userModel          = new UserModel();
+        $contentModel        = new ExploreContentModel();
+        $userModel           = new UserModel();
         $creatorProfileModel = new CreatorProfileModel();
 
-        // Fetch work and verify ownership
         $work = $contentModel->find($id);
 
         if (!$work || $work['creator_id'] !== $userId) {
@@ -219,8 +223,14 @@ class ContentController extends BaseController
                              ->with('errors', ['auth' => 'Karya tidak ditemukan atau kamu bukan pemiliknya.']);
         }
 
-        $user          = $userModel->find($userId);
+        $user           = $userModel->find($userId);
         $creatorProfile = $creatorProfileModel->find($userId);
+
+        $article = null;
+        if ($work['content_type'] === 'artikel') {
+            $articleModel = new \App\Models\ArticleModel();
+            $article      = $articleModel->findByWorkId($id);
+        }
 
         $data = [
             'title'          => 'Edit Karya - NusaShare',
@@ -228,6 +238,7 @@ class ContentController extends BaseController
             'user'           => $user,
             'creatorProfile' => $creatorProfile,
             'work'           => $work,
+            'article'        => $article,
             'activePage'     => 'content',
         ];
 
@@ -236,61 +247,64 @@ class ContentController extends BaseController
 
     public function update($id)
     {
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'creator') {
-            return redirect()->to(base_url('creator/login'));
-        }
+        if ($r = $this->guardCreator()) return $r;
 
         $userId       = session()->get('userId');
         $contentModel = new ExploreContentModel();
 
-        // Ownership check
         $work = $contentModel->find($id);
         if (!$work || $work['creator_id'] !== $userId) {
             return redirect()->to(base_url('creator/content'))
                              ->with('errors', ['auth' => 'Akses ditolak.']);
         }
 
-        // Validation
+        $contentType = $this->request->getPost('content_type');
+        $isArtikel   = ($contentType === 'artikel');
+
         $rules = [
-            'title'        => 'required|min_length[3]|max_length[255]',
-            'description'  => 'required|min_length[10]',
-            'content_type' => 'required|in_list[text,image,pdf,novel,light_novel,comic]',
-            'status'       => 'required|in_list[draft,published]',
-            'access_type'  => 'required|in_list[full,chapter]',
-            'work_status'  => 'required|in_list[ongoing,ended]',
-            'price'        => 'permit_empty|integer|greater_than_equal_to[0]',
+            'title'          => 'required|min_length[3]|max_length[255]',
+            'description'    => 'required|min_length[10]',
+            'content_type'   => 'required|in_list[text,image,pdf,novel,light_novel,comic,artikel]',
+            'status'         => 'required|in_list[draft,published]',
+            'access_type'    => 'required|in_list[full,chapter]',
+            'work_status'    => 'required|in_list[ongoing,ended]',
+            'price'          => 'permit_empty|integer|greater_than_equal_to[0]',
             'purchase_price' => 'permit_empty|integer|greater_than_equal_to[0]',
-            'cover'        => 'is_image[cover]|max_size[cover,3048]|ext_in[cover,jpg,jpeg,png,webp]',
+            'cover'          => 'permit_empty|is_image[cover]|max_size[cover,3048]|ext_in[cover,jpg,jpeg,png,webp]',
         ];
+
+        if ($isArtikel) {
+            $rules['article_body'] = 'required|min_length[10]';
+            $rules['slug']         = 'permit_empty|max_length[255]';
+        }
 
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
         $updateData = [
-            'title'        => $this->request->getPost('title'),
-            'genre'        => $this->request->getPost('genre'),
-            'description'  => $this->request->getPost('description'),
-            'content_type' => $this->request->getPost('content_type'),
-            'status'       => $this->request->getPost('status'),
-            'access_type'  => $this->request->getPost('access_type'),
-            'work_status'  => $this->request->getPost('work_status'),
-            'is_paid'      => $this->request->getPost('is_paid') ? 1 : 0,
-            'price'        => (int) $this->request->getPost('price'),
-            'purchase_price' => (int) $this->request->getPost('purchase_price'),
+            'title'          => $this->request->getPost('title'),
+            'genre'          => $this->request->getPost('genre'),
+            'description'    => $this->request->getPost('description'),
+            'content_type'   => $contentType,
+            'status'         => $this->request->getPost('status'),
+            'access_type'    => $isArtikel ? 'full'  : $this->request->getPost('access_type'),
+            'work_status'    => $isArtikel ? 'ended' : $this->request->getPost('work_status'),
+            'is_paid'        => $isArtikel ? 0 : ($this->request->getPost('is_paid') ? 1 : 0),
+            'price'          => $isArtikel ? 0 : (int) $this->request->getPost('price'),
+            'purchase_price' => $isArtikel ? 0 : (int) $this->request->getPost('purchase_price'),
             'watermark_text' => $this->request->getPost('watermark_text'),
-            'timer_duration' => (int) $this->request->getPost('timer_duration'),
+            'timer_duration' => $isArtikel ? 0 : (int) $this->request->getPost('timer_duration'),
         ];
 
         // Handle new remote cover upload
         $cover = $this->request->getFile('cover');
         if ($cover && $cover->isValid() && !$cover->hasMoved()) {
             $remoteService = new \App\Services\File\RemoteUploadService();
-            $remoteUrl = $remoteService->upload($cover, 'cover');
+            $remoteUrl     = $remoteService->upload($cover, 'cover');
 
             if ($remoteUrl) {
                 $updateData['cover_url'] = str_replace(' ', '%20', $remoteUrl);
-                // Note: We don't delete old remote covers here as we don't have a remote delete API yet.
             } else {
                 return redirect()->back()->withInput()->with('errors', ['cover' => 'Gagal mengupload cover baru ke server remote.']);
             }
@@ -298,22 +312,43 @@ class ContentController extends BaseController
 
         $contentModel->update($id, $updateData);
 
-        // Handle additional gallery images
-        $galleryImages = $this->request->getFiles();
-        if (isset($galleryImages['gallery_images'])) {
-            $imageModel = new \App\Models\WorkImageModel();
-            $remoteService = new \App\Services\File\RemoteUploadService();
-            $order = $imageModel->getNextOrder((int)$id);
+        if ($isArtikel) {
+            $articleModel    = new \App\Models\ArticleModel();
+            $existingArticle = $articleModel->findByWorkId($id);
 
-            foreach ($galleryImages['gallery_images'] as $img) {
-                if ($img->isValid() && !$img->hasMoved()) {
-                    $remoteUrl = $remoteService->upload($img, 'arts');
-                    if ($remoteUrl) {
-                        $imageModel->insert((object) [
-                            'work_id'   => $id,
-                            'file_path' => str_replace(' ', '%20', $remoteUrl),
-                            'order_num' => $order++
-                        ]);
+            $inputSlug = $this->request->getPost('slug');
+            $slug      = $articleModel->generateSlug(empty($inputSlug) ? $updateData['title'] : $inputSlug, $id);
+
+            if ($existingArticle) {
+                $articleModel->update($existingArticle['id'], [
+                    'slug' => $slug,
+                    'body' => $this->request->getPost('article_body'),
+                ]);
+            } else {
+                $articleModel->insert([
+                    'work_id' => $id,
+                    'slug'    => $slug,
+                    'body'    => $this->request->getPost('article_body'),
+                ]);
+            }
+        } else {
+            // Handle additional gallery images (only for non-article)
+            $galleryImages = $this->request->getFiles();
+            if (isset($galleryImages['gallery_images'])) {
+                $imageModel    = new \App\Models\WorkImageModel();
+                $remoteService = new \App\Services\File\RemoteUploadService();
+                $order         = $imageModel->getNextOrder((int) $id);
+
+                foreach ($galleryImages['gallery_images'] as $img) {
+                    if ($img->isValid() && !$img->hasMoved()) {
+                        $remoteUrl = $remoteService->upload($img, 'arts');
+                        if ($remoteUrl) {
+                            $imageModel->insert((object) [
+                                'work_id'   => $id,
+                                'file_path' => str_replace(' ', '%20', $remoteUrl),
+                                'order_num' => $order++,
+                            ]);
+                        }
                     }
                 }
             }
@@ -322,7 +357,6 @@ class ContentController extends BaseController
         return redirect()->to(base_url('creator/content'))
                          ->with('message', 'Karya berhasil diperbarui!');
     }
-
 
     public function publish($id)
     {
@@ -376,12 +410,13 @@ class ContentController extends BaseController
         $db = \Config\Database::connect();
         $db->transStart();
 
-        $this->deleteRowsIfTableExists($db, 'cart_items', 'work_id', (int) $id);
-        $this->deleteRowsIfTableExists($db, 'bookmarks', 'work_id', (int) $id);
-        $this->deleteRowsIfTableExists($db, 'likes', 'work_id', (int) $id);
-        $this->deleteRowsIfTableExists($db, 'comments', 'work_id', (int) $id);
+        $this->deleteRowsIfTableExists($db, 'cart_items',      'work_id', (int) $id);
+        $this->deleteRowsIfTableExists($db, 'bookmarks',       'work_id', (int) $id);
+        $this->deleteRowsIfTableExists($db, 'likes',           'work_id', (int) $id);
+        $this->deleteRowsIfTableExists($db, 'comments',        'work_id', (int) $id);
         $this->deleteRowsIfTableExists($db, 'reading_history', 'work_id', (int) $id);
-        $this->deleteRowsIfTableExists($db, 'work_images', 'work_id', (int) $id);
+        $this->deleteRowsIfTableExists($db, 'work_images',     'work_id', (int) $id);
+        $this->deleteRowsIfTableExists($db, 'articles',        'work_id', (int) $id);
 
         $chapterIds = $db->table('chapters')
                          ->select('id')

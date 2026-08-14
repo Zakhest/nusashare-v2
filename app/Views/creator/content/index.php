@@ -138,7 +138,12 @@
                                             </div>
                                             <div class="min-w-0">
                                                 <h4 class="font-bold text-slate-900 text-sm line-clamp-1"><?= $work['title'] ?></h4>
-                                                <p class="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-tight"><?= $work['content_type'] === 'image' ? 'Gambar' : 'Teks' ?></p>
+                                                <?php 
+                                                    $lbl = 'Teks';
+                                                    if ($work['content_type'] === 'image') $lbl = 'Gambar';
+                                                    elseif ($work['content_type'] === 'artikel') $lbl = 'Artikel';
+                                                ?>
+                                                <p class="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-tight"><?= $lbl ?></p>
                                             </div>
                                         </div>
                                     </td>
@@ -159,6 +164,8 @@
                                                     <span class="material-symbols-outlined text-sm">image</span>
                                                     <span class="hidden sm:inline">Gambar</span>
                                                 </a>
+                                            <?php elseif ($work['content_type'] === 'artikel'): ?>
+                                                <!-- Artikel tidak punya subhalaman bab/galeri -->
                                             <?php else: ?>
                                                 <a href="<?= base_url('creator/content/' . $work['id'] . '/chapters') ?>" class="flex items-center gap-1 px-2 md:px-3 py-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all">
                                                     <span class="material-symbols-outlined text-sm">auto_stories</span>

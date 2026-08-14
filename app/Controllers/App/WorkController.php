@@ -47,6 +47,14 @@ class WorkController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound("Karya tidak ditemukan.");
         }
 
+        if ($work['content_type'] === 'artikel') {
+            $articleModel = new \App\Models\ArticleModel();
+            $article = $articleModel->findByWorkId($id);
+            if ($article) {
+                return redirect()->to(base_url('artikel/' . $article['slug']));
+            }
+        }
+
         // View count ditangani via AJAX setelah 2 menit (threshold)
         $this->startViewThreshold((int)$id);
 

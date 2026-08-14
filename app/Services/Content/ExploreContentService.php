@@ -29,7 +29,9 @@ class ExploreContentService
             'works.view_count',
             'works.is_paid',
             'works.price',
+            'works.purchase_price',
             'works.created_at',
+            'works.genre',
             'users.username as creator_username',
             'COALESCE(user_profiles.display_name, creator_profiles.display_name) as creator_name',
         ];
@@ -94,7 +96,7 @@ class ExploreContentService
         ->join('user_profiles', 'user_profiles.user_id = works.creator_id', 'left')
         ->whereIn('works.status', ['published', 'curated', 'museum']);
 
-        $allowedTypes = ['novel', 'light_novel', 'comic', 'image'];
+        $allowedTypes = ['novel', 'light_novel', 'comic', 'image', 'artikel'];
         if ($type === 'story') {
             $builder->whereIn('works.content_type', ['novel', 'light_novel', 'comic']);
         } elseif (!empty($type) && in_array($type, $allowedTypes)) {
@@ -162,7 +164,9 @@ class ExploreContentService
             'works.view_count',
             'works.is_paid',
             'works.price',
+            'works.purchase_price',
             'works.created_at',
+            'works.genre',
             'users.username as creator_username',
             'COALESCE(user_profiles.display_name, creator_profiles.display_name) as creator_name'
         ])

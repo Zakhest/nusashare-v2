@@ -96,7 +96,7 @@
                         <h3 class="text-sm font-bold text-slate-900 mb-1">Format Utama Karya</h3>
                         <p class="text-xs text-slate-400 mb-5">Pilih kategori besar karyamu. Format yang dipilih akan menentukan kolom-kolom berikutnya.</p>
 
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" id="formatCards">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3" id="formatCards">
 
                             <!-- Gambar / Ilustrasi -->
                             <label class="type-card relative cursor-pointer group">
@@ -157,6 +157,18 @@
                                     <p class="text-[10px] text-slate-400 mt-0.5">Puisi / Essay</p>
                                 </div>
                             </label>
+
+                            <!-- Artikel -->
+                            <label class="type-card relative cursor-pointer group">
+                                <input type="radio" name="work_format" value="artikel" class="sr-only" id="fmt_artikel">
+                                <div class="card-body p-4 bg-white border-2 border-slate-100 rounded-2xl transition-all group-hover:border-indigo-200 text-center">
+                                    <div class="card-icon w-10 h-10 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center mx-auto mb-2 transition-all">
+                                        <span class="material-symbols-outlined">newspaper</span>
+                                    </div>
+                                    <p class="text-xs font-bold text-slate-800">Artikel</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Blog / Infobox</p>
+                                </div>
+                            </label>
                         </div>
 
                         <!-- Hidden input yang sesungguhnya dikirim ke server -->
@@ -174,7 +186,7 @@
                     ══════════════════════════════════════════════ -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <!-- Cover Upload -->
-                        <div class="md:col-span-1">
+                        <div class="md:col-span-1" id="coverUploadContainer">
                             <label class="block text-sm font-bold text-slate-700 mb-4">Sampul Karya</label>
                             <div class="relative group">
                                 <div id="coverPreview" class="w-full aspect-[3/4] bg-slate-100 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center overflow-hidden transition-all group-hover:border-indigo-300">
@@ -210,7 +222,7 @@
                             <!-- Judul -->
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-2">Judul Karya</label>
-                                <input type="text" name="title" value="<?= old('title') ?>" placeholder="Masukkan judul yang menarik..." 
+                                <input type="text" name="title" id="titleInput" value="<?= old('title') ?>" placeholder="Masukkan judul yang menarik..." 
                                     class="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm text-slate-900 font-medium">
                             </div>
 
@@ -235,6 +247,122 @@
                                 <label class="block text-sm font-bold text-slate-700 mb-2">Sinopsis / Deskripsi</label>
                                 <textarea name="description" rows="5" placeholder="Ceritakan sedikit tentang karya ini..." 
                                     class="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm text-slate-900 font-medium resize-none"><?= old('description') ?></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ══════════════════════════════════════════════
+                         Artikel Content Editor (hanya muncul jika tipe Artikel)
+                    ══════════════════════════════════════════════ -->
+                    <div id="articleEditorContainer" class="hidden bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-6">
+                        <div class="flex items-center justify-between border-b pb-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-900">Konten Artikel</h3>
+                                <p class="text-xs text-slate-400">Tulis isi artikel lengkap, masukkan infobox, gambar, dan tabel.</p>
+                            </div>
+                        </div>
+
+                        <!-- Slug Artikel -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">URL Slug Artikel</label>
+                            <div class="flex rounded-xl shadow-sm">
+                                <span class="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 text-slate-500 text-xs">
+                                    <?= base_url('artikel') ?>/
+                                </span>
+                                <input type="text" name="slug" id="articleSlugInput" value="<?= old('slug') ?>" placeholder="slug-artikel-anda" 
+                                    class="flex-1 min-w-0 block w-full px-4 py-3 bg-white border border-slate-200 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs font-medium text-slate-800">
+                            </div>
+                            <p class="mt-1 text-[10px] text-slate-400 italic">Kosongkan jika ingin dibuat otomatis dari judul.</p>
+                        </div>
+
+                        <!-- Tabs & Actions -->
+                        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-2">
+                            <!-- Tabs (Edit vs Preview) -->
+                            <div class="flex gap-2">
+                                <button type="button" id="tabEdit" class="px-4 py-2 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-600 transition-all">
+                                    Edit Konten
+                                </button>
+                                <button type="button" id="tabPreview" class="px-4 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50 transition-all">
+                                    Preview Tampilan
+                                </button>
+                            </div>
+
+                            <!-- Tools helper -->
+                            <div class="flex items-center gap-2">
+                                <button type="button" id="insertInfoboxBtn" class="flex items-center gap-1 px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 rounded-lg text-[10px] font-bold text-slate-600 transition-all">
+                                    <span class="material-symbols-outlined text-xs">analytics</span>
+                                    <span>+ Infobox</span>
+                                </button>
+                                <button type="button" id="insertTableBtn" class="flex items-center gap-1 px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 rounded-lg text-[10px] font-bold text-slate-600 transition-all">
+                                    <span class="material-symbols-outlined text-xs">table_chart</span>
+                                    <span>+ Tabel</span>
+                                </button>
+                                
+                                <!-- File Upload for Inline Image -->
+                                <div class="relative">
+                                    <button type="button" class="flex items-center gap-1 px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 rounded-lg text-[10px] font-bold text-slate-600 transition-all cursor-pointer">
+                                        <span class="material-symbols-outlined text-xs">add_photo_alternate</span>
+                                        <span>+ Upload Gambar</span>
+                                    </button>
+                                    <input type="file" id="inlineImageUploader" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Editor Textarea -->
+                        <div id="editorArea">
+                            <textarea name="article_body" id="articleBodyInput" rows="18" placeholder="Ketik konten artikel di sini...
+
+Gunakan tool di atas untuk menyisipkan infobox, tabel, atau mengunggah gambar secara langsung.
+
+Teks biasa akan otomatis terbagi menjadi paragraf." 
+                                class="w-full px-5 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm text-slate-800 font-mono resize-y min-h-[300px]"><?= old('article_body') ?></textarea>
+                        </div>
+
+                        <!-- Preview Container -->
+                        <div id="previewArea" class="hidden bg-slate-50 p-6 rounded-2xl border border-slate-200 min-h-[400px]">
+                            <!-- Styles will be applied to output container -->
+                            <div id="articleLivePreview" class="article-content max-w-none"></div>
+                        </div>
+
+                        <!-- Cheatsheet Collapsible -->
+                        <div class="border border-slate-200 rounded-2xl overflow-hidden">
+                            <button type="button" onclick="document.getElementById('cheatsheetContent').classList.toggle('hidden')" class="w-full bg-slate-50 px-4 py-3 flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors">
+                                <span class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-sm text-indigo-500">help</span>
+                                    Panduan Penulisan & Syntax Artikel
+                                </span>
+                                <span class="material-symbols-outlined text-sm">expand_more</span>
+                            </button>
+                            <div id="cheatsheetContent" class="hidden p-4 text-xs text-slate-600 space-y-3 bg-white border-t border-slate-100">
+                                <p><strong>Paragraf & Format Dasar:</strong></p>
+                                <ul class="list-disc list-inside space-y-1 pl-2">
+                                    <li>Tulis teks biasa seperti biasa. Baris kosong ganda akan memisahkan paragraf.</li>
+                                    <li>Gunakan <code>**teks tebal**</code> untuk membuat tulisan <strong>tebal</strong>.</li>
+                                    <li>Gunakan <code>_teks miring_</code> untuk membuat tulisan <em>miring</em>.</li>
+                                    <li>Gunakan shift+enter untuk baris baru (line break) di dalam paragraf yang sama.</li>
+                                </ul>
+                                <p class="pt-2"><strong>Infobox (Gaya Wikipedia / Biodata / Detail Karakter):</strong></p>
+                                <pre class="bg-slate-50 p-2.5 rounded-lg overflow-x-auto text-[10px] text-slate-700 font-mono">infobox: [
+  { "key": "Nama", "value": "Hanami Wickecklov" },
+  { "key": "Kekuatan", "value": "Angin" }
+]</pre>
+                                <p class="pt-2"><strong>Tabel Data:</strong></p>
+                                <pre class="bg-slate-50 p-2.5 rounded-lg overflow-x-auto text-[10px] text-slate-700 font-mono">table: {
+  "headers": ["Nama", "Kekuatan"],
+  "rows": [
+    ["Hanami", "Angin"],
+    ["Riku", "Api"]
+  ]
+}</pre>
+                                <p class="pt-2"><strong>Gambar (Layout & Caption):</strong></p>
+                                <p>Disarankan mengunggah via tombol <strong>+ Upload Gambar</strong> agar URL otomatis dihasilkan.</p>
+                                <pre class="bg-slate-50 p-2.5 rounded-lg overflow-x-auto text-[10px] text-slate-700 font-mono">image: {
+  "url": "https://...",
+  "layout": "center", 
+  "caption": "Keterangan gambar"
+}</pre>
+                                <p>Opsi <code>layout</code> yang tersedia: <code>center</code> (tengah), <code>left</code> (kiri, teks melingkari), <code>right</code> (kanan, teks melingkari), atau <code>full</code> (lebar penuh).</p>
                             </div>
                         </div>
                     </div>
@@ -281,7 +409,7 @@
                     <!-- ══════════════════════════════════════════════
                          Monetisasi
                     ══════════════════════════════════════════════ -->
-                    <div class="p-6 bg-indigo-50/50 rounded-3xl border border-indigo-100 space-y-6">
+                    <div id="monetizationSection" class="p-6 bg-indigo-50/50 rounded-3xl border border-indigo-100 space-y-6">
                         <div class="flex items-center justify-between">
                             <div>
                                 <h4 class="text-sm font-bold text-slate-900">Monetisasi</h4>
@@ -403,6 +531,7 @@
         light_novel: { label: 'Light Novel',         isImage: false, isChapter: true  },
         comic:       { label: 'Comic',               isImage: false, isChapter: true  },
         text:        { label: 'Teks / Puisi',        isImage: false, isChapter: true  },
+        artikel:     { label: 'Artikel',             isImage: false, isChapter: false, isArtikel: true }
     };
 
     const contentTypeHidden     = document.getElementById('contentTypeHidden');
@@ -414,8 +543,11 @@
     const timerContainer        = document.getElementById('timerContainer');
     const priceAccessContainer  = document.getElementById('priceAccessContainer');
 
+    const coverUploadContainer   = document.getElementById('coverUploadContainer');
+    const monetizationSection    = document.getElementById('monetizationSection');
+    const articleEditorContainer = document.getElementById('articleEditorContainer');
+
     // Sinkronisasi nama field work_status & access_type saat format berubah
-    // (untuk gambar, kita kirim nilai default via hidden agar validasi lolos)
     const workStatusRadios  = document.querySelectorAll('input[name="work_status"]');
     const accessTypeRadios  = document.querySelectorAll('input[name="access_type"]');
 
@@ -429,7 +561,12 @@
         selectedTypeLabel.textContent = meta.label;
         headerSubtitle.textContent = 'Format: ' + meta.label;
 
-        // 3. Toggle gallery vs chapter settings
+        // Reset default layout
+        coverUploadContainer.classList.remove('hidden');
+        monetizationSection.classList.remove('hidden');
+        articleEditorContainer.classList.add('hidden');
+
+        // 3. Toggle gallery vs chapter settings vs article settings
         if (meta.isImage) {
             galleryContainer.classList.remove('hidden');
             chapterSettings.classList.add('hidden');
@@ -438,6 +575,21 @@
             accessTypeRadios.forEach(r => r.disabled = true);
             // Info monetisasi khusus gambar
             monetizeInfoImage.classList.remove('hidden');
+        } else if (meta.isArtikel) {
+            galleryContainer.classList.add('hidden');
+            chapterSettings.classList.add('hidden');
+            coverUploadContainer.classList.add('hidden');
+            monetizationSection.classList.add('hidden');
+            articleEditorContainer.classList.remove('hidden');
+            workStatusRadios.forEach(r => r.disabled = true);
+            accessTypeRadios.forEach(r => r.disabled = true);
+            
+            // Force free
+            const isPaidToggle = document.getElementById('isPaidToggle');
+            if (isPaidToggle && isPaidToggle.checked) {
+                isPaidToggle.checked = false;
+                isPaidToggle.dispatchEvent(new Event('change'));
+            }
         } else {
             galleryContainer.classList.add('hidden');
             chapterSettings.classList.remove('hidden');
@@ -542,14 +694,311 @@
     // Validasi & inject hidden fields sebelum submit
     // ─────────────────────────────────────────────────────────────
     function injectImageDefaults(formData) {
-        // Saat format gambar, work_status & access_type dinonaktifkan — inject default
         const fmt = document.querySelector('input[name="work_format"]:checked')?.value;
         if (FORMAT_META[fmt]?.isImage) {
             formData.set('work_status', 'ended');
             formData.set('access_type', 'full');
+        } else if (FORMAT_META[fmt]?.isArtikel) {
+            formData.set('work_status', 'ended');
+            formData.set('access_type', 'full');
+            formData.set('is_paid', '0');
+            formData.set('price', '0');
+            formData.set('purchase_price', '0');
+            formData.set('timer_duration', '0');
         }
         return formData;
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Artikel Editor JavaScript
+    // ─────────────────────────────────────────────────────────────
+    (function() {
+        const titleInput = document.getElementById('titleInput');
+        const slugInput  = document.getElementById('articleSlugInput');
+        
+        if (titleInput && slugInput) {
+            titleInput.addEventListener('input', function() {
+                if (!slugInput.value) {
+                    slugInput.placeholder = titleToSlug(this.value);
+                }
+            });
+        }
+
+        function titleToSlug(title) {
+            return title.toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .substring(0, 80);
+        }
+
+        // Tab switcher
+        const tabEdit = document.getElementById('tabEdit');
+        const tabPreview = document.getElementById('tabPreview');
+        const editorArea = document.getElementById('editorArea');
+        const previewArea = document.getElementById('previewArea');
+        const articleBodyInput = document.getElementById('articleBodyInput');
+        const articleLivePreview = document.getElementById('articleLivePreview');
+
+        if (tabEdit && tabPreview) {
+            tabEdit.addEventListener('click', function() {
+                tabEdit.classList.add('bg-indigo-50', 'text-indigo-600');
+                tabPreview.classList.remove('bg-indigo-50', 'text-indigo-600');
+                tabPreview.classList.add('text-slate-500');
+                editorArea.classList.remove('hidden');
+                previewArea.classList.add('hidden');
+            });
+
+            tabPreview.addEventListener('click', function() {
+                tabPreview.classList.add('bg-indigo-50', 'text-indigo-600');
+                tabEdit.classList.remove('bg-indigo-50', 'text-indigo-600');
+                tabEdit.classList.add('text-slate-500');
+                editorArea.classList.add('hidden');
+                previewArea.classList.remove('hidden');
+
+                // Render live preview
+                articleLivePreview.innerHTML = renderArticleBodyJs(articleBodyInput.value);
+            });
+        }
+
+        // Template insertions
+        const insertInfoboxBtn = document.getElementById('insertInfoboxBtn');
+        const insertTableBtn    = document.getElementById('insertTableBtn');
+        const inlineImageUploader = document.getElementById('inlineImageUploader');
+
+        function insertAtCursor(textarea, text) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + text.length;
+        }
+
+        if (insertInfoboxBtn) {
+            insertInfoboxBtn.addEventListener('click', () => {
+                const infoboxTpl = `\n\ninfobox: [
+  { "key": "Nama", "value": "Hanami Wickecklov" },
+  { "key": "Kekuatan", "value": "Cahaya putih + angin" },
+  { "key": "Afiliasi", "value": "N.I.I.A." },
+  { "key": "Asal", "value": "Rekayasa DNA ORDOM" }
+]\n`;
+                insertAtCursor(articleBodyInput, infoboxTpl);
+            });
+        }
+
+        if (insertTableBtn) {
+            insertTableBtn.addEventListener('click', () => {
+                const tableTpl = `\n\ntable: {
+  "headers": ["Kolom A", "Kolom B", "Kolom C"],
+  "rows": [
+    ["Data A1", "Data B1", "Data C1"],
+    ["Data A2", "Data B2", "Data C2"]
+  ]
+}\n`;
+                insertAtCursor(articleBodyInput, tableTpl);
+            });
+        }
+
+        if (inlineImageUploader) {
+            inlineImageUploader.addEventListener('change', async function() {
+                const file = this.files[0];
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const btn = this.closest('div').querySelector('button');
+                const btnSpan = btn.querySelector('span:last-child');
+                const originalText = btnSpan.textContent;
+                btnSpan.textContent = 'Uploading...';
+                btn.disabled = true;
+
+                try {
+                    const res = await fetch('<?= base_url('creator/artikel/upload-image') ?>', {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        const imageTpl = `\n\nimage: {
+  "url": "${data.url}",
+  "layout": "center",
+  "caption": "Keterangan gambar..."
+}\n`;
+                        insertAtCursor(articleBodyInput, imageTpl);
+                    } else {
+                        alert('Gagal mengupload gambar: ' + (data.error || 'Terjadi kesalahan'));
+                    }
+                } catch(e) {
+                    alert('Terjadi kesalahan jaringan.');
+                } finally {
+                    btnSpan.textContent = originalText;
+                    btn.disabled = false;
+                    this.value = '';
+                }
+            });
+        }
+
+        // Live Preview Renderer in JS
+        function renderArticleBodyJs(raw) {
+            if (!raw.trim()) return '<p class="text-slate-400 italic">Belum ada konten...</p>';
+            
+            const blocks = splitBlocksJs(raw);
+            let html = '';
+
+            blocks.forEach(block => {
+                const trimmed = block.trim();
+                if (!trimmed) return;
+
+                if (trimmed.startsWith('infobox:')) {
+                    html += renderInfoboxJs(trimmed);
+                } else if (trimmed.startsWith('table:')) {
+                    html += renderTableJs(trimmed);
+                } else if (trimmed.startsWith('image:')) {
+                    html += renderImageJs(trimmed);
+                } else {
+                    html += renderParagraphJs(trimmed);
+                }
+            });
+
+            return html;
+        }
+
+        function splitBlocksJs(body) {
+            const normalized = body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            const lines = normalized.split('\n');
+            const blocks = [];
+            let buffer = '';
+            let depth = 0;
+            let inSpecial = false;
+
+            lines.forEach(line => {
+                const trimmed = line.trimStart();
+                const startsSpecial = trimmed.startsWith('infobox:')
+                    || trimmed.startsWith('table:')
+                    || trimmed.startsWith('image:');
+
+                if (!inSpecial && startsSpecial) {
+                    if (buffer.trim()) blocks.push(buffer);
+                    buffer = '';
+                    depth = 0;
+                    inSpecial = true;
+                }
+
+                buffer += line + '\n';
+                depth += (line.match(/[\[\{]/g) || []).length;
+                depth -= (line.match(/[\]\}]/g) || []).length;
+
+                if (inSpecial && depth <= 0) {
+                    if (buffer.trim()) blocks.push(buffer);
+                    buffer = '';
+                    depth = 0;
+                    inSpecial = false;
+                    return;
+                }
+
+                if (!inSpecial && line.trim() === '' && depth <= 0) {
+                    if (buffer.trim()) blocks.push(buffer);
+                    buffer = '';
+                    depth = 0;
+                }
+            });
+
+            if (buffer.trim()) blocks.push(buffer);
+            return blocks;
+        }
+
+        function renderInfoboxJs(block) {
+            try {
+                const jsonStr = block.substring(8).trim();
+                const data = JSON.parse(jsonStr);
+                if (!Array.isArray(data)) throw new Error();
+                let rows = '';
+                data.forEach(row => {
+                    if (row.key === undefined || row.value === undefined) return;
+                    rows += `<tr>
+                        <th class="article-infobox-key">${escapeHtml(row.key)}</th>
+                        <td class="article-infobox-value">${escapeHtml(row.value)}</td>
+                    </tr>`;
+                });
+                return `<div class="article-infobox">
+                    <div class="article-infobox-header">
+                        <span class="article-infobox-icon">📋</span>
+                        <span>Info</span>
+                    </div>
+                    <table class="article-infobox-table">
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+            } catch(e) {
+                return '<p class="article-parse-error">⚠️ Infobox tidak valid (Pastikan format JSON benar).</p>';
+            }
+        }
+
+        function renderTableJs(block) {
+            try {
+                const jsonStr = block.substring(6).trim();
+                const data = JSON.parse(jsonStr);
+                if (!data.rows) throw new Error();
+                
+                let thead = '';
+                if (data.headers) {
+                    let ths = '';
+                    data.headers.forEach(h => ths += `<th>${escapeHtml(h)}</th>`);
+                    thead = `<thead><tr>${ths}</tr></thead>`;
+                }
+
+                let tbody = '<tbody>';
+                data.rows.forEach(row => {
+                    let tds = '';
+                    row.forEach(cell => tds += `<td>${escapeHtml(cell)}</td>`);
+                    tbody += `<tr>${tds}</tr>`;
+                });
+                tbody += '</tbody>';
+
+                return `<div class="article-table-wrap"><table class="article-table">${thead}${tbody}</table></div>`;
+            } catch(e) {
+                return '<p class="article-parse-error">⚠️ Tabel tidak valid (Pastikan format JSON benar).</p>';
+            }
+        }
+
+        function renderImageJs(block) {
+            try {
+                const jsonStr = block.substring(6).trim();
+                const data = JSON.parse(jsonStr);
+                if (!data.url) throw new Error();
+                const layout = data.layout || 'center';
+                const caption = data.caption ? `<figcaption class="article-img-caption">${escapeHtml(data.caption)}</figcaption>` : '';
+                return `<figure class="article-img article-img--${layout}">
+                    <img src="${escapeHtml(data.url)}" alt="${escapeHtml(data.caption || '')}">
+                    ${caption}
+                </figure>`;
+            } catch(e) {
+                return '<p class="article-parse-error">⚠️ Gambar tidak valid.</p>';
+            }
+        }
+
+        function renderParagraphJs(block) {
+            let escaped = escapeHtml(block);
+            escaped = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            escaped = escaped.replace(/_(.+?)_/g, '<em>$1</em>');
+            
+            const paras = escaped.split(/\n\s*\n/);
+            return paras.map(p => {
+                if (!p.trim()) return '';
+                const withBrs = p.replace(/\n/g, '<br>');
+                return `<p class="article-para">${withBrs}</p>`;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    })();
 
     // ─────────────────────────────────────────────────────────────
     // AJAX Form Submission

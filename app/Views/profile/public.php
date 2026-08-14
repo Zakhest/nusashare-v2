@@ -4,37 +4,53 @@
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title><?= $title ?? 'Profil - NusaShare' ?></title>
-    
+
     <!-- Fonts: Inter -->
     <link href="https://fonts.googleapis.com" rel="preconnect">
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Material Icons -->
     <link rel="icon" href="<?= base_url('assets/icon/logonus.png') ?>" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
-    
+
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
-        .art-card {
-            background: #FFFFFF;
-            border: 1px solid #E2E8F0;
-            border-radius: 16px;
-            overflow: hidden;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #0f172a; }
+        .profile-shell {
+            background:
+                radial-gradient(circle at top left, rgba(79, 70, 229, 0.12), transparent 34rem),
+                radial-gradient(circle at 85% 10%, rgba(20, 184, 166, 0.11), transparent 28rem),
+                linear-gradient(180deg, #f8fafc 0%, #ffffff 48%, #f8fafc 100%);
         }
-        .art-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.08);
-            border-color: #CBD5E1;
+        .hero-panel {
+            background:
+                linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.94)),
+                linear-gradient(135deg, rgba(79, 70, 229, 0.35), rgba(20, 184, 166, 0.25));
+            box-shadow: 0 30px 80px -48px rgba(15, 23, 42, 0.75);
+        }
+        .hero-pattern {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+            background-size: 38px 38px;
+            mask-image: linear-gradient(135deg, transparent 0%, black 22%, black 75%, transparent 100%);
         }
         .btn-primary {
-            background: linear-gradient(135deg, #4F46E5, #22D3EE);
+            background: linear-gradient(135deg, #4f46e5, #0f766e);
             color: white;
-            transition: all 0.3s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 16px 30px -18px rgba(79, 70, 229, 0.85); }
+        .stat-tile, .art-card { transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease; }
+        .stat-tile:hover, .art-card:hover { transform: translateY(-3px); border-color: #cbd5e1; box-shadow: 0 18px 34px -26px rgba(15, 23, 42, 0.45); }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
     </style>
 </head>
@@ -48,34 +64,44 @@
         ]) ?>
     <?php endif; ?>
 
+    <?php
+        $displayName = $profile['display_name'] ?? ($targetUser['username'] ?? 'User');
+        $usernameSlug = $targetUser['username'] ?? '';
+        $bio = trim((string)($profile['bio'] ?? ''));
+        $role = strtolower((string)($targetUser['role'] ?? 'user'));
+        $isCreator = in_array($role, ['creator', 'kreator'], true);
+        $workCount = count($works ?? []);
+        $profileImage = $profile['profile_image'] ?? null;
+        $initial = strtoupper(substr($displayName, 0, 1));
+    ?>
+
     <!-- Main Wrapper -->
-    <div class="<?= ($isLoggedIn ?? false) ? 'flex-1 flex flex-col h-full overflow-hidden' : '' ?>">
-        
+    <div class="<?= ($isLoggedIn ?? false) ? 'flex-1 flex flex-col h-full overflow-hidden' : 'min-h-screen' ?>">
+
         <!-- Navbar -->
-        <nav class="<?= ($isLoggedIn ?? false) ? 'bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-40' : 'fixed top-0 w-full z-40 bg-white/80 backdrop-blur-md border-b border-slate-200' ?>">
+        <nav class="<?= ($isLoggedIn ?? false) ? 'bg-white/95 border-b border-slate-200 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-40 backdrop-blur' : 'fixed top-0 w-full z-40 bg-white/85 backdrop-blur-md border-b border-slate-200' ?>">
             <div class="<?= ($isLoggedIn ?? false) ? 'w-full flex items-center justify-between' : 'max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between' ?>">
-                <div class="flex items-center gap-6">
-                    <a href="<?= base_url('explore') ?>" class="flex items-center gap-2 group">
-                        <img src="<?= base_url('assets/icon/logonus.png') ?>" alt="Logo N" class="w-8 h-8"/>
-                        <span class="font-bold text-lg text-[#0F172A] tracking-tight">NusaShare</span>
-                    </a>
-                </div>
-                
-                <div class="flex items-center gap-4">
+                <a href="<?= base_url('explore') ?>" class="flex items-center gap-2 group">
+                    <img src="<?= base_url('assets/icon/logonus.png') ?>" alt="Logo N" class="w-8 h-8"/>
+                    <span class="font-extrabold text-lg text-slate-950 tracking-tight">NusaShare</span>
+                </a>
+
+                <div class="flex items-center gap-3">
                     <?php if (!($isLoggedIn ?? false)): ?>
-                        <a href="<?= base_url('login') ?>" class="btn-primary px-5 py-2 rounded-full text-sm font-medium shadow-sm">Masuk</a>
+                        <a href="<?= base_url('explore') ?>" class="hidden sm:inline-flex px-4 py-2 rounded-full text-sm font-bold text-slate-600 hover:text-slate-950 hover:bg-slate-100 transition-colors">Explore</a>
+                        <a href="<?= base_url('login') ?>" class="btn-primary px-5 py-2 rounded-full text-sm font-bold shadow-sm">Masuk</a>
                     <?php else: ?>
-                        <?php 
+                        <?php
                             $creditModel = new \App\Models\CreditModel();
                             $userCredit = $creditModel->find(session()->get('userId'));
                             $balance = $userCredit ? $userCredit['balance'] : 0;
                         ?>
-                        <a href="<?= base_url('topup') ?>" class="bg-indigo-50 px-3 py-1.5 rounded-full flex items-center gap-2 border border-indigo-100 hover:bg-indigo-100 transition-colors mr-2">
+                        <a href="<?= base_url('topup') ?>" class="bg-indigo-50 px-3 py-1.5 rounded-full flex items-center gap-2 border border-indigo-100 hover:bg-indigo-100 transition-colors">
                             <span class="material-symbols-outlined text-indigo-600 text-lg">account_balance_wallet</span>
-                            <span class="text-xs font-bold text-indigo-900"><?= number_format($balance) ?> CC</span>
+                            <span class="text-xs font-extrabold text-indigo-950"><?= number_format($balance) ?> CC</span>
                         </a>
                         <div class="text-right hidden sm:block">
-                            <p class="text-xs font-bold text-slate-900"><?= $username ?></p>
+                            <p class="text-xs font-extrabold text-slate-900"><?= esc($username ?? '') ?></p>
                             <p class="text-[10px] text-slate-500">Mode User</p>
                         </div>
                     <?php endif; ?>
@@ -84,82 +110,113 @@
         </nav>
 
         <!-- Profile Content -->
-        <div class="flex-1 overflow-y-auto pt-24 pb-12 px-6">
-            <div class="max-w-5xl mx-auto">
-                <!-- Header Card -->
-                <div class="bg-white rounded-[32px] shadow-sm border border-slate-100 p-8 md:p-12 mb-12 relative overflow-hidden">
-                    <!-- Background Decor -->
-                    <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-                    
-                    <div class="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10">
-                        <div class="w-32 h-32 rounded-[40px] bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-4xl font-black shadow-xl shrink-0 overflow-hidden">
-                            <?php if (!empty($profile['profile_image'])): ?>
-                                <img src="/image-nusashare/profile/<?= $profile['profile_image'] ?>" alt="Avatar" class="w-full h-full object-cover">
-                            <?php else: ?>
-                                <?= strtoupper(substr($profile['display_name'], 0, 1)) ?>
-                            <?php endif; ?>
-                        </div>
-                        
-                        <div class="text-center md:text-left flex-1">
-                            <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4">
-                                <h1 class="text-3xl font-black text-slate-900"><?= esc($profile['display_name']) ?></h1>
-                                <?php if (($targetUser['role'] ?? 'user') === 'creator'): ?>
-                                    <span class="inline-flex items-center px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold uppercase tracking-widest border border-indigo-100">
-                                        OFFICIAL KREATOR
-                                    </span>
+        <main class="profile-shell flex-1 overflow-y-auto pt-24 md:pt-28 pb-14 px-4 md:px-8">
+            <div class="max-w-6xl mx-auto">
+                <!-- Hero -->
+                <section class="hero-panel relative overflow-hidden rounded-[28px] md:rounded-[36px] text-white">
+                    <div class="hero-pattern absolute inset-0 opacity-70"></div>
+                    <div class="relative p-5 sm:p-8 md:p-10 lg:p-12">
+                        <div class="flex flex-col lg:flex-row lg:items-end gap-8">
+                            <div class="flex flex-col sm:flex-row gap-6 sm:items-center flex-1 min-w-0">
+                                <div class="relative shrink-0">
+                                    <div class="w-28 h-28 md:w-36 md:h-36 rounded-[30px] bg-white/10 border border-white/20 p-2 shadow-2xl">
+                                        <div class="w-full h-full rounded-[24px] bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center text-white text-5xl font-black overflow-hidden">
+                                            <?php if (!empty($profileImage)): ?>
+                                                <img src="<?= base_url('image/profile/' . $profileImage) ?>" alt="<?= esc($displayName) ?>" class="w-full h-full object-cover">
+                                            <?php else: ?>
+                                                <?= esc($initial) ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <?php if ($isCreator): ?>
+                                        <div class="absolute -right-2 -bottom-2 w-11 h-11 rounded-2xl bg-amber-300 text-slate-950 flex items-center justify-center border-4 border-slate-900 shadow-lg">
+                                            <span class="material-symbols-outlined">verified</span>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+
+                                <div class="min-w-0">
+                                    <div class="flex flex-wrap items-center gap-2 mb-3">
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-extrabold uppercase tracking-widest text-white/85">
+                                            <span class="material-symbols-outlined text-sm">alternate_email</span>
+                                            <?= esc($usernameSlug) ?>
+                                        </span>
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full <?= $isCreator ? 'bg-amber-300 text-slate-950' : 'bg-teal-300 text-slate-950' ?> text-[11px] font-black uppercase tracking-widest">
+                                            <?= $isCreator ? 'Kreator' : 'Member' ?>
+                                        </span>
+                                    </div>
+                                    <h1 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight break-words"><?= esc($displayName) ?></h1>
+                                    <p class="mt-4 text-white/75 text-base md:text-lg leading-relaxed max-w-2xl">
+                                        <?= esc($bio ?: 'Belum ada bio. Karya, koleksi, dan aktivitas kreatif akun ini akan tampil di sini.') ?>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap gap-3 lg:justify-end">
+                                <?php if (($targetUser['id'] ?? '') !== (session()->get('userId') ?? '')): ?>
+                                    <button
+                                        id="followBtn"
+                                        data-creator-id="<?= esc($targetUser['id']) ?>"
+                                        data-is-following="<?= $isFollowing ? 'true' : 'false' ?>"
+                                        class="<?= $isFollowing ? 'bg-white/15 text-white border border-white/20 hover:bg-white/20' : 'btn-primary text-white shadow-lg shadow-indigo-950/20' ?> px-6 py-3 rounded-2xl font-extrabold text-sm flex items-center gap-2 transition-all active:scale-95"
+                                    >
+                                        <span class="material-symbols-outlined text-lg"><?= $isFollowing ? 'check' : 'add' ?></span>
+                                        <span class="btn-text"><?= $isFollowing ? 'Diikuti' : 'Follow' ?></span>
+                                    </button>
                                 <?php endif; ?>
-                            </div>
-                            
-                            <p class="text-slate-600 leading-relaxed max-w-2xl text-lg italic">
-                                "<?= esc($profile['bio'] ?: 'Belum ada bio.') ?>"
-                            </p>
-                            
-                            <div class="flex flex-wrap justify-center md:justify-start gap-6 mt-8">
-                                <div class="text-center md:text-left">
-                                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Followers</p>
-                                    <p id="followerCount" class="text-xl font-black text-slate-900"><?= number_format($followerCount ?? 0) ?></p>
-                                </div>
-                                <div class="text-center md:text-left">
-                                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Readers</p>
-                                    <p id="readerCount" class="text-xl font-black text-slate-900"><?= number_format($readerCount ?? 0) ?></p>
-                                </div>
-                                <div class="text-center md:text-left">
-                                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Karya</p>
-                                    <p class="text-xl font-black text-slate-900"><?= count($works ?? []) ?></p>
-                                </div>
+                                <a href="#portfolio" class="px-6 py-3 rounded-2xl font-extrabold text-sm flex items-center gap-2 bg-white text-slate-950 hover:bg-slate-100 transition-colors">
+                                    <span class="material-symbols-outlined text-lg">grid_view</span>
+                                    Lihat Karya
+                                </a>
                             </div>
                         </div>
-                        
-                        <div class="shrink-0 mt-4 md:mt-0">
-                            <?php if (($targetUser['id'] ?? '') !== (session()->get('userId') ?? '')): ?>
-                                <button 
-                                    id="followBtn" 
-                                    data-creator-id="<?= $targetUser['id'] ?>"
-                                    data-is-following="<?= $isFollowing ? 'true' : 'false' ?>"
-                                    class="<?= $isFollowing ? 'bg-slate-100 text-slate-600' : 'btn-primary text-white shadow-lg shadow-indigo-100' ?> px-8 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all active:scale-95"
-                                >
-                                    <span class="material-symbols-outlined text-lg"><?= $isFollowing ? 'check' : 'add' ?></span>
-                                    <span class="btn-text"><?= $isFollowing ? 'Diikuti' : 'Follow' ?></span>
-                                </button>
-                            <?php endif; ?>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-8">
+                            <div class="stat-tile rounded-3xl bg-white/10 border border-white/15 p-5 backdrop-blur">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="text-xs font-extrabold uppercase tracking-widest text-white/60">Followers</p>
+                                    <span class="material-symbols-outlined text-white/45">group</span>
+                                </div>
+                                <p id="followerCount" class="mt-3 text-3xl font-black"><?= number_format($followerCount ?? 0) ?></p>
+                            </div>
+                            <div class="stat-tile rounded-3xl bg-white/10 border border-white/15 p-5 backdrop-blur">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="text-xs font-extrabold uppercase tracking-widest text-white/60">Readers</p>
+                                    <span class="material-symbols-outlined text-white/45">visibility</span>
+                                </div>
+                                <p id="readerCount" class="mt-3 text-3xl font-black"><?= number_format($readerCount ?? 0) ?></p>
+                            </div>
+                            <div class="stat-tile rounded-3xl bg-white/10 border border-white/15 p-5 backdrop-blur">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="text-xs font-extrabold uppercase tracking-widest text-white/60">Karya</p>
+                                    <span class="material-symbols-outlined text-white/45">palette</span>
+                                </div>
+                                <p class="mt-3 text-3xl font-black"><?= number_format($workCount) ?></p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <!-- Works Grid -->
-                <div>
-                    <h2 class="text-xl font-black text-slate-900 mb-8 flex items-center gap-3">
-                        <span class="material-symbols-outlined text-indigo-500">palette</span>
-                        Portfolio Karya
-                    </h2>
-                    
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                        <?php if (!empty($works)): ?>
+                <!-- Portfolio -->
+                <section id="portfolio" class="mt-10 md:mt-12">
+                    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">Portfolio</p>
+                            <h2 class="text-2xl md:text-3xl font-black text-slate-950 mt-2">Karya dari <?= esc($displayName) ?></h2>
+                        </div>
+                        <div class="inline-flex self-start md:self-auto items-center gap-2 rounded-full bg-white border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 shadow-sm">
+                            <span class="material-symbols-outlined text-lg text-teal-600">auto_awesome</span>
+                            <?= number_format($workCount) ?> karya tersedia
+                        </div>
+                    </div>
+
+                    <?php if (!empty($works)): ?>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 md:gap-6">
                             <?php foreach ($works as $work): ?>
-                                <?php 
+                                <?php
                                     $coverUrl = base_url('image/cover/' . $work['id']);
                                     if (empty($work['cover_url'])) {
-                                        $coverUrl = base_url('assets/icon/logonuss.png');
+                                        $coverUrl = base_url('assets/icon/logonus.png');
                                     }
 
                                     $isPaid = !empty($work['is_paid']);
@@ -167,49 +224,65 @@
                                     if ($displayPrice <= 0) {
                                         $displayPrice = (int)($work['price'] ?? 0);
                                     }
+                                    $typeLabel = strtoupper((string)($work['content_type'] ?? 'Karya'));
                                 ?>
 
-                                <a href="<?= base_url('works/' . $work['id']) ?>" class="art-card group cursor-pointer block">
-                                    <div class="relative aspect-[4/3] bg-slate-100 overflow-hidden border-b border-slate-100">
+                                <a href="<?= base_url('works/' . $work['id']) ?>" class="art-card group block overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                                    <div class="relative aspect-[16/11] bg-slate-100 overflow-hidden">
                                         <img src="<?= $coverUrl ?>" alt="<?= esc($work['title']) ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
-                                        <span class="absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm <?= $isPaid ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200' ?>">
+                                        <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/60 to-transparent"></div>
+                                        <div class="absolute left-4 top-4 flex flex-wrap gap-2">
+                                            <span class="px-3 py-1 rounded-full bg-white/90 text-slate-800 text-[10px] font-black uppercase tracking-widest shadow-sm">
+                                                <?= esc($typeLabel) ?>
+                                            </span>
+                                        </div>
+                                        <span class="absolute right-4 top-4 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm <?= $isPaid ? 'bg-amber-300 text-slate-950' : 'bg-emerald-300 text-slate-950' ?>">
                                             <?= $isPaid ? number_format($displayPrice) . ' CC' : 'Gratis' ?>
                                         </span>
                                     </div>
-                                    <div class="p-4">
-                                        <h3 class="font-bold text-slate-900 leading-tight mb-2 truncate group-hover:text-indigo-600 transition-colors"><?= esc($work['title']) ?></h3>
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 italic"><?= esc($work['content_type']) ?></span>
-                                            <div class="flex items-center gap-1 text-[10px] text-slate-400">
-                                                <span class="material-symbols-outlined text-[12px]">visibility</span>
-                                                <?= number_format($work['view_count'] ?? 0) ?>
+                                    <div class="p-5">
+                                        <h3 class="font-black text-slate-950 leading-tight text-lg group-hover:text-indigo-600 transition-colors line-clamp-2"><?= esc($work['title']) ?></h3>
+                                        <p class="mt-3 text-sm text-slate-500 line-clamp-2"><?= esc(strip_tags($work['description'] ?? '')) ?></p>
+                                        <div class="mt-5 flex items-center justify-between gap-4 border-t border-slate-100 pt-4">
+                                            <div class="flex items-center gap-3 text-xs font-bold text-slate-500">
+                                                <span class="inline-flex items-center gap-1">
+                                                    <span class="material-symbols-outlined text-base">visibility</span>
+                                                    <?= number_format($work['view_count'] ?? 0) ?>
+                                                </span>
+                                                <span class="inline-flex items-center gap-1">
+                                                    <span class="material-symbols-outlined text-base">favorite</span>
+                                                    <?= number_format($work['like_count'] ?? 0) ?>
+                                                </span>
                                             </div>
+                                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-slate-950 text-white group-hover:bg-indigo-600 transition-colors">
+                                                <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                                            </span>
                                         </div>
                                     </div>
                                 </a>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <div class="col-span-full py-20 text-center bg-white rounded-[32px] border border-slate-100">
-                                <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
-                                    <span class="material-symbols-outlined text-3xl">folder_off</span>
-                                </div>
-                                <h3 class="text-slate-900 font-bold mb-1">Belum ada karya</h3>
-                                <p class="text-slate-400 text-sm">Eksperiman atau karya terbaru akan muncul di sini.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="rounded-[28px] border border-dashed border-slate-300 bg-white p-8 md:p-14 text-center shadow-sm">
+                            <div class="w-20 h-20 rounded-3xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-5">
+                                <span class="material-symbols-outlined text-4xl">folder_off</span>
                             </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
+                            <h3 class="text-xl font-black text-slate-950 mb-2">Belum ada karya</h3>
+                            <p class="text-slate-500 text-sm max-w-md mx-auto">Saat akun ini mulai menerbitkan karya, daftar karyanya akan tampil di sini dengan rapi.</p>
+                        </div>
+                    <?php endif; ?>
+                </section>
             </div>
-        </div>
+        </main>
 
         <!-- Footer -->
-        <footer class="bg-white border-t border-slate-100 py-12">
-            <div class="max-w-5xl mx-auto px-6 text-center">
-                <div class="flex items-center justify-center gap-2 mb-6">
+        <footer class="bg-white border-t border-slate-100 py-8">
+            <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+                <div class="flex items-center justify-center gap-2">
                     <img src="<?= base_url('assets/icon/logonus.png') ?>" alt="Logo N" class="w-6 h-6">
-                    <span class="font-bold text-slate-900">NusaShare</span>
+                    <span class="font-extrabold text-slate-950">NusaShare</span>
                 </div>
-                <p class="text-slate-400 text-xs">©<?= date("Y") ?> NusaShare. Platform Kreator Independen Indonesia.</p>
+                <p class="text-slate-400 text-xs">&copy;<?= date("Y") ?> NusaShare. Platform kreator independen Indonesia.</p>
             </div>
         </footer>
     </div>
@@ -232,7 +305,6 @@
         }
     }
 
-    // Initial fetch
     fetchStats();
 
     const followBtn = document.getElementById('followBtn');
@@ -240,12 +312,11 @@
         followBtn.addEventListener('click', async () => {
             const creatorId = followBtn.dataset.creatorId;
             const isFollowing = followBtn.dataset.isFollowing === 'true';
-            const url = isFollowing 
+            const url = isFollowing
                 ? `<?= base_url('follow') ?>/${creatorId}/remove`
                 : `<?= base_url('follow') ?>/${creatorId}`;
-            
+
             try {
-                // Disable button during request
                 followBtn.disabled = true;
                 followBtn.style.opacity = '0.5';
 
@@ -256,29 +327,26 @@
                         'X-CSRF-TOKEN': '<?= csrf_hash() ?>'
                     }
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.status === 'success') {
-                    // Toggle state
                     const newIsFollowing = !isFollowing;
                     followBtn.dataset.isFollowing = newIsFollowing;
-                    
-                    // Update UI
+
                     const icon = followBtn.querySelector('.material-symbols-outlined');
                     const text = followBtn.querySelector('.btn-text');
-                    
+
                     if (newIsFollowing) {
-                        followBtn.className = 'bg-slate-100 text-slate-600 px-8 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all active:scale-95';
+                        followBtn.className = 'bg-white/15 text-white border border-white/20 hover:bg-white/20 px-6 py-3 rounded-2xl font-extrabold text-sm flex items-center gap-2 transition-all active:scale-95';
                         icon.textContent = 'check';
                         text.textContent = 'Diikuti';
                     } else {
-                        followBtn.className = 'btn-primary text-white shadow-lg shadow-indigo-100 px-8 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all active:scale-95';
+                        followBtn.className = 'btn-primary text-white shadow-lg shadow-indigo-950/20 px-6 py-3 rounded-2xl font-extrabold text-sm flex items-center gap-2 transition-all active:scale-95';
                         icon.textContent = 'add';
                         text.textContent = 'Follow';
                     }
 
-                    // Re-fetch stats to update counter
                     fetchStats();
                 } else {
                     alert(data.message || 'Terjadi kesalahan.');

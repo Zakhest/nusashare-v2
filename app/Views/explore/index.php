@@ -64,10 +64,12 @@
 
         /* Work Card */
         .work-card {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
         }
         .work-card:hover {
-            transform: translateY(-4px);
+            transform: translateY(-3px);
+            border-color: #cbd5e1;
+            box-shadow: 0 18px 34px -26px rgba(15, 23, 42, 0.45);
         }
 
         .hide-scrollbar {
@@ -208,12 +210,14 @@
             $viewParam   = $_GET['view'] ?? 'grid';
             $currentView = in_array($viewParam, ['grid', 'list'], true) ? $viewParam : 'grid';
 
-            // ── Hero Spotlight Dinamis ──────────────────────────────────────────
+            // â”€â”€ Hero Spotlight Dinamis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             $sl        = $spotlightWork ?? null;
-            $slCover   = $sl ? base_url('image/cover/' . $sl['id']) : base_url('assets/icon/logonuss.png');
+            $slType    = $sl['content_type'] ?? '';
+            $slNeedsCover = $slType !== 'artikel';
+            $slHasCover   = $sl && !empty($sl['cover_url']);
+            $slCover   = $sl && ($slHasCover || $slNeedsCover) ? base_url($slHasCover ? 'image/cover/' . $sl['id'] : 'assets/icon/logonus.png') : base_url('assets/icon/logonus.png');
             $slTitle   = $sl['title']       ?? 'Jelajahi Karya Terbaik';
             $slDesc    = $sl['description'] ?? 'Temukan ribuan karya kreatif dari para kreator Indonesia.';
-            $slType    = $sl['content_type'] ?? '';
             $slCreator = $sl['creator_name'] ?? '';
             $slViews   = (int)($sl['view_count'] ?? 0);
 
@@ -240,6 +244,7 @@
                 'light_novel' => 'Light Novel',
                 'comic'       => 'Komik',
                 'image'       => 'Galeri Seni',
+                'artikel'     => 'Artikel',
             ];
             $sortLabels = [
                 'latest'      => 'Terbaru',
@@ -247,11 +252,12 @@
                 'recommended' => 'Yang mungkin Anda sukai',
             ];
 
-            // ── Kelompokkan works per tipe ──────────────────────────────────────
+            // Kelompokkan works per tipe
             $worksAll = $works ?? [];
             // comic masuk Rak Buku (bukan Galeri)
             $bookTypes    = ['novel', 'light_novel', 'comic'];
             $galleryTypes = ['image'];
+            $articleTypes = ['artikel'];
 
             if (!empty($currentType)) {
                 $cfgMap = [
@@ -260,6 +266,7 @@
                     'comic'       => ['label' => 'Rak Buku (Novel, LN & Komik)', 'icon' => 'auto_stories', 'color' => '#6366F1', 'bg' => '#EEF2FF', 'portrait' => true],
                     'story'       => ['label' => 'Rak Buku (Novel, LN & Komik)', 'icon' => 'auto_stories', 'color' => '#6366F1', 'bg' => '#EEF2FF', 'portrait' => true],
                     'image'       => ['label' => 'Galeri Seni',                  'icon' => 'palette',      'color' => '#F59E0B', 'bg' => '#FFFBEB', 'portrait' => false],
+                    'artikel'     => ['label' => 'Artikel',                      'icon' => 'article',      'color' => '#D97706', 'bg' => '#FEF3C7', 'portrait' => false],
                 ];
                 $cfg = $cfgMap[$currentType] ?? ['label' => 'Karya', 'icon' => 'grid_view', 'color' => '#6366F1', 'bg' => '#EEF2FF', 'portrait' => false];
                 $groupedWorks = [
@@ -272,25 +279,28 @@
             } else {
                 $bookGroup    = [];
                 $galleryGroup = [];
+                $articleGroup = [];
                 $otherGroup   = [];
                 foreach ($worksAll as $w) {
                     $ct = $w['content_type'] ?? '';
-                    if (in_array($ct, $bookTypes))    $bookGroup[]    = $w;
-                    elseif (in_array($ct, $galleryTypes)) $galleryGroup[] = $w;
-                    else                               $otherGroup[]   = $w;
+                    if (in_array($ct, $bookTypes))         $bookGroup[]    = $w;
+                    elseif (in_array($ct, $galleryTypes))  $galleryGroup[] = $w;
+                    elseif (in_array($ct, $articleTypes))  $articleGroup[] = $w;
+                    else                                    $otherGroup[]   = $w;
                 }
                 $groupedWorks = [];
                 if (!empty($bookGroup))    $groupedWorks['books']   = ['label' => 'Rak Buku (Novel, LN & Komik)', 'icon' => 'auto_stories', 'color' => '#6366F1', 'bg' => '#EEF2FF', 'portrait' => true,  'works' => $bookGroup];
                 if (!empty($galleryGroup)) $groupedWorks['gallery'] = ['label' => 'Galeri Seni',                  'icon' => 'palette',      'color' => '#F59E0B', 'bg' => '#FFFBEB', 'portrait' => false, 'works' => $galleryGroup];
+                if (!empty($articleGroup)) $groupedWorks['article'] = ['label' => 'Artikel',                      'icon' => 'article',      'color' => '#D97706', 'bg' => '#FEF3C7', 'portrait' => false, 'works' => $articleGroup];
                 if (!empty($otherGroup))   $groupedWorks['other']   = ['label' => 'Konten Lainnya',               'icon' => 'grid_view',    'color' => '#64748B', 'bg' => '#F1F5F9', 'portrait' => false, 'works' => $otherGroup];
             }
 
-            // ── Helper functions ────────────────────────────────────────────────
+            // Helper functions
             function xTypeLabel(string $t): string {
-                return match($t) { 'novel' => 'Novel', 'light_novel' => 'LN', 'comic' => 'Komik', 'image' => 'Art', 'text' => 'Teks', default => strtoupper($t) };
+                return match($t) { 'novel' => 'Novel', 'light_novel' => 'LN', 'comic' => 'Komik', 'image' => 'Art', 'artikel' => 'Artikel', 'text' => 'Teks', default => strtoupper($t) };
             }
             function xTypeBadge(string $t): string {
-                return match($t) { 'novel' => 'bg-indigo-600', 'light_novel' => 'bg-violet-600', 'comic' => 'bg-amber-500', 'image' => 'bg-emerald-600', default => 'bg-slate-600' };
+                return match($t) { 'novel' => 'bg-indigo-600', 'light_novel' => 'bg-violet-600', 'comic' => 'bg-amber-500', 'image' => 'bg-emerald-600', 'artikel' => 'bg-orange-600', default => 'bg-slate-600' };
             }
             function xFmtViews(int $n): string {
                 if ($n >= 1000000) return round($n/1000000,1).'jt';
@@ -313,7 +323,7 @@
             }
         ?>
 
-        <!-- ── Hero Spotlight ──────────────────────────────────────────────── -->
+        <!-- â”€â”€ Hero Spotlight â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
         <section class="<?= $isLoggedIn ? 'pt-5' : 'pt-5 lg:pt-24' ?> px-4 md:px-6">
             <div class="max-w-7xl mx-auto">
                 <div class="explore-spotlight rounded-2xl overflow-hidden border border-slate-900/10 shadow-md" style="--spotlight-image: url('<?= $slCover ?>');">
@@ -378,7 +388,7 @@
             </div>
         </section>
 
-        <!-- ── Filter Bar ──────────────────────────────────────────────────── -->
+        <!-- â”€â”€ Filter Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
         <section class="<?= $isLoggedIn ? 'sticky top-0' : 'sticky top-16' ?> z-30 bg-[#F8FAFC]/95 backdrop-blur-sm border-b border-slate-200/60 py-3 mt-6">
             <div class="max-w-7xl mx-auto px-4 md:px-6 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3">
                 <div class="flex gap-2 overflow-x-auto pb-1 xl:pb-0 w-full xl:w-auto hide-scrollbar">
@@ -415,7 +425,7 @@
             </div>
         </section>
 
-    <!-- ── Main Content ──────────────────────────────────────────────────── -->
+    <!-- â”€â”€ Main Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
     <main class="max-w-7xl mx-auto px-4 md:px-6 py-8 min-h-screen">
 
         <?php if (isset($query)): ?>
@@ -456,7 +466,7 @@
             </h2>
         <?php endif; ?>
 
-        <!-- ── Grouped Work Sections ──────────────────────────────────────── -->
+        <!-- â”€â”€ Grouped Work Sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
         <?php if (!empty($groupedWorks)): ?>
             <?php foreach ($groupedWorks as $groupKey => $group): ?>
             <section class="mb-14">
@@ -472,9 +482,12 @@
                         </div>
                     </div>
                     <?php
-                        $moreUrl = $groupKey === 'books'
-                            ? base_url('explore/story')
-                            : ($groupKey === 'gallery' ? base_url('explore/gallery') : '');
+                        $moreUrl = match ($groupKey) {
+                            'books'   => base_url('explore/story'),
+                            'gallery' => base_url('explore/gallery'),
+                            'article' => exploreUrl('artikel', $currentSort, $currentView, $currentGenre),
+                            default   => '',
+                        };
                     ?>
                     <?php if (!empty($moreUrl) && empty($currentType) && !isset($query)): ?>
                         <a href="<?= $moreUrl ?>" class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600">
@@ -484,26 +497,28 @@
                     <?php endif; ?>
                 </div>
 
-                <!-- Works Grid — 3 columns -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-5">
+                <!-- Works Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 md:gap-6">
                     <?php foreach ($group['works'] as $idx => $work): ?>
                     <?php
-                        $coverUrl  = base_url('image/cover/' . $work['id']);
-                        if (empty($work['cover_url'])) $coverUrl = base_url('assets/icon/logonuss.png');
-                        $wViews    = (int)($work['view_count'] ?? 0);
-                        $wRating   = xRating($wViews);
-                        $wIsPaid   = !empty($work['is_paid']);
-                        $wPrice    = xFmtPrice($wIsPaid, $work['price'] ?? 0);
-                        $wType     = $work['content_type'] ?? '';
-                        $wBadge    = xTypeBadge($wType);
-                        $wLabel    = xTypeLabel($wType);
-                        $wName     = $work['creator_name'] ?: ($work['creator_username'] ?? '?');
-                        $delay     = $idx * 40;
-                        // portrait untuk novel/light_novel/comic, landscape untuk image
-                        $isPortrait  = $group['portrait'] ?? false;
-                        $aspectClass = $isPortrait ? 'aspect-[2/3]' : 'aspect-[16/9]';
+                        $wType      = $work['content_type'] ?? '';
+                        $needsCover = $wType !== 'artikel';
+                        $hasCover   = !empty($work['cover_url']);
+                        $coverUrl   = $hasCover ? base_url('image/cover/' . $work['id']) : ($needsCover ? base_url('assets/icon/logonus.png') : '');
+                        $wViews     = (int)($work['view_count'] ?? 0);
+                        $wLikes     = (int)($work['like_count'] ?? 0);
+                        $wIsPaid    = !empty($work['is_paid']);
+                        $priceValue = (int)($work['purchase_price'] ?? 0);
+                        if ($priceValue <= 0) {
+                            $priceValue = (int)($work['price'] ?? 0);
+                        }
+                        $wPrice = xFmtPrice($wIsPaid, $priceValue);
+                        $wLabel = xTypeLabel($wType);
+                        $wName  = $work['creator_name'] ?: ($work['creator_username'] ?? '?');
+                        $delay  = $idx * 40;
+                        $isBookCard = !empty($group['portrait']);
                     ?>
-                    <div class="work-card group cursor-pointer bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-lg hover:border-indigo-200 opacity-0"
+                    <div class="work-card group cursor-pointer overflow-hidden rounded-3xl border border-slate-200 bg-white opacity-0 <?= $isBookCard ? 'relative aspect-[2/3]' : '' ?>"
                          style="animation: 0.45s ease <?= $delay ?>ms 1 normal forwards running fadeInUp;"
                          onclick="openModal(<?= htmlspecialchars(json_encode([
                              'id'          => $work['id'],
@@ -516,70 +531,119 @@
                              'description' => $work['description'] ?? '',
                              'status'      => $work['status'] ?? '',
                              'is_paid'     => $wIsPaid,
-                             'price'       => $work['price'] ?? 0,
+                             'price'       => $priceValue,
                              'creator'     => ['name' => $wName, 'username' => $work['creator_username'] ?? ''],
                              'is_bookmarked' => $work['is_bookmarked'] ?? false,
                          ])) ?>)">
 
-                        <!-- Cover Image -->
-                        <div class="relative <?= $aspectClass ?> bg-slate-100 overflow-hidden">
-                            <img src="<?= $coverUrl ?>"
-                                 alt="<?= htmlspecialchars($work['title']) ?>"
-                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                 loading="lazy" decoding="async">
-                            <!-- Type Badge (top-left) -->
-                            <span class="absolute top-2.5 left-2.5 <?= $wBadge ?> text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-sm">
-                                <?= $wLabel ?>
-                            </span>
-                            <!-- Price Badge (top-right) -->
-                            <span class="absolute top-2.5 right-2.5 <?= $wIsPaid ? 'bg-slate-900/80' : 'bg-emerald-600' ?> text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm backdrop-blur">
-                                <?= $wPrice ?>
-                            </span>
-                            <!-- Genre Badge (bottom-left) -->
-                            <?php if (!empty($work['genre']) && $isPortrait): ?>
-                            <span class="absolute bottom-2.5 left-2.5 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm backdrop-blur">
-                                <?= htmlspecialchars($work['genre']) ?>
-                            </span>
-                            <?php endif; ?>
-                            <div class="absolute inset-0 bg-indigo-900/0 group-hover:bg-indigo-900/10 transition-colors duration-300"></div>
-                        </div>
-
-                        <!-- Card Body -->
-                        <div class="p-3">
-                            <h3 class="font-bold text-slate-900 text-sm leading-snug line-clamp-2 group-hover:text-indigo-600 transition-colors mb-1">
-                                <?= htmlspecialchars($work['title']) ?>
-                            </h3>
-                            <p class="text-xs text-slate-500 truncate mb-2.5">
-                                <span class="material-symbols-outlined text-[12px] align-middle mr-0.5 text-slate-400">person</span>
-                                <?= htmlspecialchars($wName) ?>
-                            </p>
-                            <!-- Bottom: Star Rating + Price -->
-                            <div class="flex items-center justify-between gap-1">
-                                <!-- Stars -->
-                                <div class="flex items-center gap-1">
-                                    <div class="flex items-center gap-0.5">
-                                        <?php
-                                            $full  = (int)floor($wRating);
-                                            $half  = ($wRating - $full) >= 0.4;
-                                            $empty = 5 - $full - ($half ? 1 : 0);
-                                            for ($s = 0; $s < $full; $s++): ?>
-                                                <svg class="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                                        <?php endfor; ?>
-                                        <?php if ($half): ?>
-                                            <svg class="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 1.5l1.922 5.915H18l-4.937 3.586 1.883 5.79L10 13.26l-4.945 3.531 1.883-5.79L2 7.415h6.078L10 1.5z"/></svg>
-                                        <?php endif; ?>
-                                        <?php for ($s = 0; $s < $empty; $s++): ?>
-                                            <svg class="w-3 h-3 text-slate-200" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                                        <?php endfor; ?>
+                        <?php if ($isBookCard): ?>
+                            <!-- Full Book Cover Card -->
+                            <div class="absolute inset-0 bg-slate-100 overflow-hidden">
+                                <?php if ($coverUrl !== ''): ?>
+                                    <img src="<?= $coverUrl ?>"
+                                         alt="<?= htmlspecialchars($work['title']) ?>"
+                                         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                         loading="lazy" decoding="async">
+                                <?php else: ?>
+                                    <div class="h-full w-full bg-gradient-to-br from-indigo-50 via-white to-slate-100 p-5 flex flex-col justify-between">
+                                        <span class="material-symbols-outlined text-4xl text-indigo-400">auto_stories</span>
+                                        <h4 class="text-xl font-black leading-tight text-slate-900 line-clamp-3"><?= htmlspecialchars($work['title']) ?></h4>
                                     </div>
-                                    <span class="text-[10px] font-bold text-amber-500"><?= number_format($wRating, 1) ?></span>
+                                <?php endif; ?>
+                                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/18 to-transparent"></div>
+                                <div class="absolute left-4 top-4 flex flex-wrap gap-2">
+                                    <span class="px-3 py-1 rounded-full bg-white/90 text-slate-800 text-[10px] font-black uppercase tracking-widest shadow-sm">
+                                        <?= htmlspecialchars(strtoupper($wLabel)) ?>
+                                    </span>
                                 </div>
-                                <!-- Price chip -->
-                                <span class="text-[10px] font-bold <?= $wIsPaid ? 'text-indigo-600 bg-indigo-50 border border-indigo-100' : 'text-emerald-600 bg-emerald-50 border border-emerald-100' ?> px-2 py-0.5 rounded-full">
+                                <span class="absolute right-4 top-4 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm <?= $wIsPaid ? 'bg-amber-300 text-slate-950' : 'bg-emerald-300 text-slate-950' ?>">
+                                    <?= $wPrice ?>
+                                </span>
+                                <div class="absolute inset-x-0 bottom-0 p-4 sm:p-5 text-white">
+                                    <h3 class="font-black text-lg leading-tight line-clamp-2 group-hover:text-indigo-200 transition-colors">
+                                        <?= htmlspecialchars($work['title']) ?>
+                                    </h3>
+                                    <p class="mt-2 text-xs text-white/75 truncate">
+                                        <span class="material-symbols-outlined text-[13px] align-middle mr-0.5">person</span>
+                                        <?= htmlspecialchars($wName) ?>
+                                    </p>
+                                    <div class="mt-4 flex items-center justify-between gap-4 border-t border-white/15 pt-3">
+                                        <div class="flex items-center gap-3 text-xs font-bold text-white/80">
+                                            <span class="inline-flex items-center gap-1">
+                                                <span class="material-symbols-outlined text-base">visibility</span>
+                                                <?= number_format($wViews) ?>
+                                            </span>
+                                            <span class="inline-flex items-center gap-1">
+                                                <span class="material-symbols-outlined text-base">favorite</span>
+                                                <?= number_format($wLikes) ?>
+                                            </span>
+                                        </div>
+                                        <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white text-slate-950 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                                            <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <!-- Cover Image -->
+                            <div class="relative aspect-[16/11] bg-slate-100 overflow-hidden">
+                                <?php if ($coverUrl !== ''): ?>
+                                    <img src="<?= $coverUrl ?>"
+                                         alt="<?= htmlspecialchars($work['title']) ?>"
+                                         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                         loading="lazy" decoding="async">
+                                <?php else: ?>
+                                    <div class="h-full w-full bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 flex flex-col justify-between transition-transform duration-700 group-hover:scale-[1.02]">
+                                        <div class="flex items-center justify-between text-orange-600/80">
+                                            <span class="material-symbols-outlined text-4xl">article</span>
+                                            <span class="text-[10px] font-black uppercase tracking-[0.2em]">Artikel</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-[11px] font-bold uppercase tracking-wider text-orange-600/80 mb-2"><?= htmlspecialchars($work['genre'] ?? 'Tulisan') ?></p>
+                                            <h4 class="text-xl font-black leading-tight text-slate-900 line-clamp-3"><?= htmlspecialchars($work['title']) ?></h4>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/60 to-transparent"></div>
+                                <div class="absolute left-4 top-4 flex flex-wrap gap-2">
+                                    <span class="px-3 py-1 rounded-full bg-white/90 text-slate-800 text-[10px] font-black uppercase tracking-widest shadow-sm">
+                                        <?= htmlspecialchars(strtoupper($wLabel)) ?>
+                                    </span>
+                                </div>
+                                <span class="absolute right-4 top-4 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm <?= $wIsPaid ? 'bg-amber-300 text-slate-950' : 'bg-emerald-300 text-slate-950' ?>">
                                     <?= $wPrice ?>
                                 </span>
                             </div>
-                        </div>
+
+                            <!-- Card Body -->
+                            <div class="p-5">
+                                <h3 class="font-black text-slate-950 leading-tight text-lg group-hover:text-indigo-600 transition-colors line-clamp-2">
+                                    <?= htmlspecialchars($work['title']) ?>
+                                </h3>
+                                <p class="mt-2 text-xs text-slate-500 truncate">
+                                    <span class="material-symbols-outlined text-[13px] align-middle mr-0.5 text-slate-400">person</span>
+                                    <?= htmlspecialchars($wName) ?>
+                                </p>
+                                <p class="mt-3 text-sm text-slate-500 line-clamp-2"><?= esc(strip_tags($work['description'] ?? '')) ?></p>
+
+                                <div class="mt-5 flex items-center justify-between gap-4 border-t border-slate-100 pt-4">
+                                    <div class="flex items-center gap-3 text-xs font-bold text-slate-500">
+                                        <span class="inline-flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-base">visibility</span>
+                                            <?= number_format($wViews) ?>
+                                        </span>
+                                        <span class="inline-flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-base">favorite</span>
+                                            <?= number_format($wLikes) ?>
+                                        </span>
+                                    </div>
+                                    <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-slate-950 text-white group-hover:bg-indigo-600 transition-colors">
+                                        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                                    </span>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -637,7 +701,7 @@
     </div> <!-- End Content Scroll Container -->
 </div> <!-- End Main Flex Wrapper if Logged In -->
 
-    <!-- ── Detail Modal ────────────────────────────────────────────────────── -->
+    <!-- â”€â”€ Detail Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
     <div id="detail-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0" id="modal-backdrop"></div>
@@ -652,6 +716,16 @@
                 <!-- Left: Cover Image -->
                 <div class="relative bg-slate-100 min-h-[260px] max-h-[42dvh] md:min-h-[500px] md:max-h-none overflow-hidden flex items-center justify-center" id="modal-image-wrap">
                     <img id="modal-image" src="" alt="Cover" class="w-full h-full object-cover transition-transform duration-700">
+                    <div id="modal-article-cover" class="hidden absolute inset-0 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-8 flex-col justify-between">
+                        <div class="flex items-center justify-between text-orange-600/80">
+                            <span class="material-symbols-outlined text-5xl">article</span>
+                            <span class="text-xs font-black uppercase tracking-[0.25em]">Artikel</span>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider text-orange-600/80 mb-3">NusaShare</p>
+                            <h4 id="modal-article-cover-title" class="text-3xl md:text-4xl font-black leading-tight text-slate-900"></h4>
+                        </div>
+                    </div>
                     <?php if (!$isLoggedIn): ?>
                     <div class="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/20 backdrop-blur-[3px]">
                         <div class="bg-white/90 backdrop-blur px-6 py-4 rounded-xl shadow-lg text-center border border-white/50">
@@ -666,20 +740,20 @@
                 <!-- Right: Info -->
                 <div class="p-5 sm:p-8 md:p-10 flex flex-col h-full bg-white">
                     <div class="mb-auto">
-                        <span id="modal-type" class="inline-block px-3 py-1 rounded-full bg-indigo-50 text-[#4F46E5] text-xs font-bold uppercase tracking-wider mb-4">—</span>
-                        <h2 id="detail-modal-title" class="text-2xl md:text-3xl font-bold text-[#0F172A] mb-3 leading-tight">—</h2>
+                        <span id="modal-type" class="inline-block px-3 py-1 rounded-full bg-indigo-50 text-[#4F46E5] text-xs font-bold uppercase tracking-wider mb-4">â€”</span>
+                        <h2 id="detail-modal-title" class="text-2xl md:text-3xl font-bold text-[#0F172A] mb-3 leading-tight">â€”</h2>
                         <div class="flex items-center gap-3 text-xs text-slate-400 mb-5">
                             <span class="flex items-center gap-1">
                                 <span class="material-symbols-outlined text-sm">schedule</span>
-                                <span id="detail-modal-date">—</span>
+                                <span id="detail-modal-date">â€”</span>
                             </span>
-                            <span>•</span>
+                            <span>â€¢</span>
                             <span class="flex items-center gap-1">
                                 <span class="material-symbols-outlined text-sm">visibility</span>
-                                <span id="detail-modal-views">—</span>
+                                <span id="detail-modal-views">â€”</span>
                             </span>
                         </div>
-                        <p id="detail-modal-desc" class="text-[#475569] text-sm leading-relaxed line-clamp-5">—</p>
+                        <p id="detail-modal-desc" class="text-[#475569] text-sm leading-relaxed line-clamp-5">â€”</p>
                     </div>
 
                     <!-- Creator + Actions -->
@@ -688,7 +762,7 @@
                             <div id="modal-creator-avatar" class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-lg border-2 border-white shadow-sm shrink-0">?</div>
                             <div>
                                 <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Kreator</p>
-                                <h4 id="modal-creator-name" class="font-bold text-[#0F172A] group-hover:text-[#4F46E5] transition-colors">—</h4>
+                                <h4 id="modal-creator-name" class="font-bold text-[#0F172A] group-hover:text-[#4F46E5] transition-colors">â€”</h4>
                             </div>
                         </a>
 
@@ -748,11 +822,25 @@
 
         const typeLabelMap = {
             text: 'Novel / Teks', image: 'Art & Image', pdf: 'PDF',
-            novel: 'Novel', light_novel: 'Light Novel', comic: 'Komik'
+            novel: 'Novel', light_novel: 'Light Novel', comic: 'Komik', artikel: 'Artikel'
         };
 
         function openModal(art) {
-            document.getElementById('modal-image').src = art.image;
+            const modalImage = document.getElementById('modal-image');
+            const articleCover = document.getElementById('modal-article-cover');
+            const articleCoverTitle = document.getElementById('modal-article-cover-title');
+            if (art.image) {
+                modalImage.src = art.image;
+                modalImage.classList.remove('hidden');
+                articleCover.classList.add('hidden');
+                articleCover.classList.remove('flex');
+            } else {
+                modalImage.removeAttribute('src');
+                modalImage.classList.add('hidden');
+                articleCoverTitle.textContent = art.title;
+                articleCover.classList.remove('hidden');
+                articleCover.classList.add('flex');
+            }
             document.getElementById('modal-type').textContent = typeLabelMap[art.type] || art.type;
             document.getElementById('detail-modal-title').textContent = art.title;
             document.getElementById('detail-modal-date').textContent  = relativeDate(art.created_at);
@@ -761,7 +849,7 @@
 
             const initial = (art.creator.name || '?').charAt(0).toUpperCase();
             document.getElementById('modal-creator-avatar').textContent = initial;
-            document.getElementById('modal-creator-name').textContent   = art.creator.name || '—';
+            document.getElementById('modal-creator-name').textContent   = art.creator.name || 'â€”';
             const creatorLink = document.getElementById('modal-creator-link');
             creatorLink.href = art.creator.username ? BASE_URL + 'creator/' + art.creator.username : '#';
 

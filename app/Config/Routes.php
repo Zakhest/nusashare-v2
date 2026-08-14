@@ -53,6 +53,7 @@ $routes->get('works/(:num)/download', 'App\WorkController::download/$1');
 $routes->get('works/(:num)/read/(:num)', 'App\WorkController::read/$1/$2');
 $routes->post('works/(:num)/view', 'App\WorkController::recordView/$1'); // 2-menit threshold view
 $routes->get('content/(:segment)', 'App\ContentController::show/$1');
+$routes->get('artikel/(:segment)', 'App\ArticleController::show/$1');
 
 // Legal
 $routes->get('terms', 'Home::terms');
@@ -177,6 +178,7 @@ $routes->group('creator', ['filter' => 'auth:creator'], function ($routes) {
     $routes->post('content/(:num)/publish', 'Creator\ContentController::publish/$1');
     $routes->post('content/(:num)/archive', 'Creator\ContentController::archive/$1');
     $routes->post('content/(:num)/delete', 'Creator\ContentController::destroy/$1');
+    $routes->post('artikel/upload-image', 'Creator\ArticleUploadController::uploadImage');
 
     // Chapter Management (for text works)
     $routes->get('content/(:num)/chapters', 'Creator\ChapterController::index/$1');

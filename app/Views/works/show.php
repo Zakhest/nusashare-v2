@@ -67,6 +67,7 @@
                         elseif ($work['content_type'] === 'light_novel') { $typeLabel = 'Light Novel'; $typeClass = 'bg-teal-50 text-teal-600'; }
                         elseif ($work['content_type'] === 'comic') { $typeLabel = 'Comic'; $typeClass = 'bg-purple-50 text-purple-600'; }
                         elseif ($work['content_type'] === 'text') { $typeLabel = 'Teks'; }
+                        elseif ($work['content_type'] === 'artikel') { $typeLabel = 'Artikel'; $typeClass = 'bg-amber-50 text-amber-600'; }
                     ?>
                     <span class="inline-block px-3 py-1 rounded-full <?= $typeClass ?> text-xs font-bold uppercase tracking-wider">
                         <?= $typeLabel ?>

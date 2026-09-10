@@ -155,18 +155,18 @@
                     <?php endforeach; ?>
                 </div>
 
-                <!-- PDF Ownership Info Box -->
+                <!-- File Password Info Box -->
                 <div class="mt-5 bg-indigo-500/10 border border-indigo-400/30 rounded-2xl p-4">
                     <div class="flex items-start gap-3">
                         <div class="w-8 h-8 rounded-xl bg-indigo-400/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                             <span class="material-symbols-outlined text-indigo-300 text-[18px]" style="font-variation-settings:'FILL' 1">verified_user</span>
                         </div>
                         <div class="flex-1">
-                            <p class="text-indigo-300 font-bold text-sm mb-1">Identitas pembeli tercetak di cover PDF</p>
-                            <p class="text-indigo-200/70 text-xs leading-relaxed">Setiap file PDF berisi halaman cover dengan nama akun dan User ID Anda sebagai tanda kepemilikan.</p>
+                            <p class="text-indigo-300 font-bold text-sm mb-1">File ZIP dan PDF dilindungi password</p>
+                            <p class="text-indigo-200/70 text-xs leading-relaxed">Gunakan User ID Anda sebagai password untuk membuka file unduhan.</p>
                             <div class="mt-3 flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
                                 <span class="material-symbols-outlined text-indigo-300 text-[16px]">badge</span>
-                                <span class="text-white/50 text-xs">User ID kamu:</span>
+                                <span class="text-white/50 text-xs">Password file:</span>
                                 <span class="text-white font-mono font-bold text-sm tracking-widest" id="pdf-user-id"><?= htmlspecialchars((string) session()->get('userId')) ?></span>
                                 <button onclick="copyUserId()" title="Salin" class="ml-auto text-white/30 hover:text-indigo-300 transition-colors">
                                     <span class="material-symbols-outlined text-[16px]" id="copy-icon">content_copy</span>

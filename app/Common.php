@@ -13,3 +13,29 @@
  *
  * @see: https://codeigniter.com/user_guide/extending/common.html
  */
+
+if (!function_exists('profile_url')) {
+    /**
+     * Generate profile image URL safely, handling both external OAuth URLs (Google/etc.) and local filenames.
+     */
+    function profile_url(?string $path): string
+    {
+        if (empty($path)) {
+            return '';
+        }
+
+        // Jika URL eksternal (OAuth Google dll)
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        // Jika path relatif assets/ atau uploads/
+        if (str_starts_with($path, 'assets/') || str_starts_with($path, 'uploads/')) {
+            return base_url($path);
+        }
+
+        // Filename lokal diproses lewat proxy controller
+        return base_url('image/profile/' . $path);
+    }
+}
+

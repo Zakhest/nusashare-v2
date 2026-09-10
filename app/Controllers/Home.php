@@ -27,4 +27,10 @@ class Home extends BaseController
     {
         return view('privacy', ['title' => 'Kebijakan Privasi - NusaShare']);
     }
+
+    public function offline(): string
+    {
+        $this->response->setStatusCode(503);
+        return view('offline');
+    }
 }

@@ -246,8 +246,12 @@
                             <p class="text-xs font-bold text-slate-900"><?= $username ?></p>
                             <p class="text-[10px] text-slate-500"><?= $user['starsoul_status'] ?? 'Anggota NusaShare' ?></p>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-[#4F46E5] font-bold">
-                            <?= strtoupper(substr($username, 0, 1)) ?>
+                        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-[#4F46E5] font-bold overflow-hidden flex-shrink-0">
+                            <?php if (!empty($profile['profile_image'])): ?>
+                                <img src="<?= profile_url($profile['profile_image']) ?>" alt="Avatar" class="w-full h-full object-cover">
+                            <?php else: ?>
+                                <?= strtoupper(substr($username, 0, 1)) ?>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -295,6 +299,7 @@
                                 $dlIcon   = ($t === 'image') ? 'photo_library' : 'picture_as_pdf';
                                 $inCart   = in_array($work['id'], $cartWorkIds);
                                 $buyPrice = ((int)($work['purchase_price'] ?? 0) > 0) ? (int)$work['purchase_price'] : (int)$work['price'];
+                                $allowDownloads = (int)($work['allow_downloads'] ?? 1) === 1;
                             ?>
                             <div class="art-card group opacity-0 translate-y-4 animate-in"
                                  style="animation-delay: <?= $delay ?>ms;"
@@ -311,6 +316,12 @@
                                             <span class="material-symbols-outlined text-[11px]"><?= $dlIcon ?></span>
                                             <?= $dlFormat ?>
                                         </span>
+                                        <?php if (!$allowDownloads): ?>
+                                            <span class="flex items-center gap-1 bg-rose-600/90 backdrop-blur px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+                                                <span class="material-symbols-outlined text-[11px]">block</span>
+                                                Unduh Off
+                                            </span>
+                                        <?php endif; ?>
                                     </div>
 
                                     <!-- Price badge bottom-left -->
@@ -337,23 +348,26 @@
                                 </div>
 
                                 <div class="wishlist-card-body p-4">
-                                    <h3 class="wishlist-card-title font-bold text-[#0F172A] text-base leading-tight mb-2 truncate group-hover:text-[#4F46E5] transition-colors"><?= htmlspecialchars($work['title']) ?></h3>
+                                    <h3 class="wishlist-card-title font-bold text-[#0F172A] text-base leading-tight mb-2 truncate transition-colors">
+                                        <a href="<?= base_url('works/' . $work['id']) ?>" class="hover:text-[#4F46E5] transition-colors"><?= htmlspecialchars($work['title']) ?></a>
+                                    </h3>
                                     <div class="flex items-center gap-2 mb-3">
                                         <div class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-500">
                                             <?= strtoupper(substr($work['creator_name'] ?? 'U', 0, 1)) ?>
                                         </div>
-                                        <span class="text-xs text-[#475569] font-medium truncate max-w-[120px]"><?= htmlspecialchars($work['creator_name'] ?? 'Unknown') ?></span>
+                                        <a href="<?= base_url('creator/' . urlencode($work['creator_name'] ?? '')) ?>" class="text-xs text-[#475569] font-medium truncate max-w-[120px] hover:text-[#4F46E5] hover:underline transition-colors"><?= htmlspecialchars($work['creator_name'] ?? 'Unknown') ?></a>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <!-- Tombol Keranjang AJAX -->
                                         <button
                                             id="cart-btn-<?= $work['id'] ?>"
-                                            class="cart-btn flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all <?= $inCart ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-indigo-600 text-white hover:bg-indigo-700' ?>"
+                                            class="cart-btn flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all <?= !$allowDownloads ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ($inCart ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-indigo-600 text-white hover:bg-indigo-700') ?>"
                                             data-work-id="<?= $work['id'] ?>"
                                             data-in-cart="<?= $inCart ? '1' : '0' ?>"
+                                            <?= !$allowDownloads ? 'disabled' : '' ?>
                                             onclick="toggleCart(this, <?= $work['id'] ?>)">
-                                            <span class="material-symbols-outlined text-[14px] cart-icon"><?= $inCart ? 'shopping_cart_checkout' : 'add_shopping_cart' ?></span>
-                                            <span class="cart-label"><?= $inCart ? 'Di Keranjang' : '+ Keranjang' ?></span>
+                                            <span class="material-symbols-outlined text-[14px] cart-icon"><?= !$allowDownloads ? 'block' : ($inCart ? 'shopping_cart_checkout' : 'add_shopping_cart') ?></span>
+                                            <span class="cart-label"><?= !$allowDownloads ? 'Unduh Off' : ($inCart ? 'Di Keranjang' : '+ Keranjang') ?></span>
                                         </button>
                                         <a href="<?= base_url('works/' . $work['id']) ?>"
                                            class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"

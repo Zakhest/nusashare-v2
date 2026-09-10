@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\BookmarkModel;
 use App\Models\ExploreContentModel;
 use App\Models\UserModel;
+use App\Models\UserProfileModel;
 use App\Models\CreatorProfileModel;
 use App\Models\CartModel;
 
@@ -21,9 +22,10 @@ class BookmarkController extends BaseController
             return redirect()->to('login');
         }
 
-        $bookmarkModel = new BookmarkModel();
-        $contentModel = new ExploreContentModel();
-        $userModel = new UserModel();
+        $bookmarkModel       = new BookmarkModel();
+        $contentModel        = new ExploreContentModel();
+        $userModel           = new UserModel();
+        $userProfileModel    = new UserProfileModel();
         $creatorProfileModel = new CreatorProfileModel();
 
         // Get bookmarked IDs
@@ -56,12 +58,17 @@ class BookmarkController extends BaseController
                 ->getResultArray();
         }
 
-        $cartModel = new CartModel();
+        $cartModel   = new CartModel();
+        $userProfile = $userProfileModel->find($userId);
 
         $data = [
             'works'          => $works,
             'user'           => $userModel->find($userId),
             'username'       => session()->get('username'),
+            'profile'        => [
+                'profile_image' => $userProfile['profile_image'] ?? null,
+                'display_name'  => $userProfile['display_name'] ?? session()->get('username'),
+            ],
             'creatorProfile' => $creatorProfileModel->find($userId),
             'cartWorkIds'    => $cartModel->getWorkIds((string)$userId),
             'isLoggedIn'     => true,

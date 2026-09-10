@@ -63,4 +63,16 @@ ServerSignature Off
 	<FilesMatch "\.(?:avif|gif|ico|jpe?g|png|svg|webp)$">
 		Header set Cache-Control "public, max-age=31536000"
 	</FilesMatch>
+
+	# PWA: Service Worker — tidak boleh di-cache agar update propagate instan
+	<FilesMatch "^sw\.js$">
+		Header set Cache-Control "no-cache, no-store, must-revalidate"
+		Header set Service-Worker-Allowed "/"
+	</FilesMatch>
+
+	# PWA: Manifest
+	<FilesMatch "^manifest\.json$">
+		Header set Cache-Control "public, max-age=86400"
+		Header set Content-Type "application/manifest+json"
+	</FilesMatch>
 </IfModule>

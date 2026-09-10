@@ -16,6 +16,15 @@
     <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
     <link rel="icon" href="<?= base_url('assets/icon/logonus.png') ?>" type="image/x-icon">
+
+    <!-- PWA -->
+    <link rel="manifest" href="<?= base_url('manifest.json') ?>">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NusaShare">
+    <link rel="apple-touch-icon" href="/assets/pwa/icon-192.png">
     
     <style>
         :root {
@@ -185,15 +194,11 @@
                 </div>
 
                 <!-- Social Login Buttons -->
-                <div class="flex gap-3">
-                    <button type="button" class="flex-1 flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all">
+                <div class="mb-6">
+                    <a href="<?= base_url('auth/login') ?>" class="w-full flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all">
                         <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 flex-shrink-0" alt="Google">
-                        <span class="text-sm font-medium text-slate-700">Google</span>
-                    </button>
-                    <button type="button" class="flex-1 flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all">
-                        <img src="https://www.svgrepo.com/show/442938/apple-logo.svg" class="w-5 h-5 flex-shrink-0" alt="Apple">
-                        <span class="text-sm font-medium text-slate-700">Apple</span>
-                    </button>
+                        <span class="text-sm font-medium text-slate-700">Daftar dengan Google</span>
+                    </a>
                 </div>
 
                 <!-- Footer Login Link -->
@@ -206,5 +211,6 @@
         </div>
     </div>
 
+<script src="<?= base_url('assets/js/pwa.js') ?>"></script>
 </body>
 </html>

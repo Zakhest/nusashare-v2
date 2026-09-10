@@ -136,6 +136,7 @@ class ContentController extends BaseController
             'is_paid'        => $isArtikel ? 0 : ($this->request->getPost('is_paid') ? 1 : 0),
             'price'          => $isArtikel ? 0 : (int) $this->request->getPost('price'),
             'purchase_price' => $isArtikel ? 0 : (int) $this->request->getPost('purchase_price'),
+            'allow_downloads'=> $isArtikel ? 0 : ((int) $this->request->getPost('allow_downloads') === 1 ? 1 : 0),
             'watermark_text' => $this->request->getPost('watermark_text'),
             'timer_duration' => $isArtikel ? 0 : (int) $this->request->getPost('timer_duration'),
             'is_locked'      => 0,
@@ -293,6 +294,7 @@ class ContentController extends BaseController
             'is_paid'        => $isArtikel ? 0 : ($this->request->getPost('is_paid') ? 1 : 0),
             'price'          => $isArtikel ? 0 : (int) $this->request->getPost('price'),
             'purchase_price' => $isArtikel ? 0 : (int) $this->request->getPost('purchase_price'),
+            'allow_downloads'=> $isArtikel ? 0 : ((int) $this->request->getPost('allow_downloads') === 1 ? 1 : 0),
             'watermark_text' => $this->request->getPost('watermark_text'),
             'timer_duration' => $isArtikel ? 0 : (int) $this->request->getPost('timer_duration'),
         ];

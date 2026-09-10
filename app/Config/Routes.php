@@ -54,7 +54,8 @@ $routes->get('works/(:num)/read/(:num)', 'App\WorkController::read/$1/$2');
 $routes->post('works/(:num)/view', 'App\WorkController::recordView/$1'); // 2-menit threshold view
 $routes->get('content/(:segment)', 'App\ContentController::show/$1');
 $routes->get('artikel/(:segment)', 'App\ArticleController::show/$1');
-
+$routes->get('auth/login', 'Auth::login');
+$routes->get('auth/callback', 'Auth::callback');
 // Legal
 $routes->get('terms', 'Home::terms');
 $routes->get('privacy', 'Home::privacy');
@@ -63,20 +64,20 @@ $routes->get('privacy', 'Home::privacy');
 $routes->get('alpha-admin', 'App\AdminController::index', ['filter' => 'auth:admin']);
 
 // Admin — User Management API (AJAX, auth:admin)
-$routes->get('alpha-admin/api/users',                   'App\AdminController::apiUsers',            ['filter' => 'auth:admin']);
-$routes->get('alpha-admin/api/users/(:segment)',         'App\AdminController::apiUserDetail/$1',    ['filter' => 'auth:admin']);
+$routes->get('alpha-admin/api/users', 'App\AdminController::apiUsers', ['filter' => 'auth:admin']);
+$routes->get('alpha-admin/api/users/(:segment)', 'App\AdminController::apiUserDetail/$1', ['filter' => 'auth:admin']);
 $routes->post('alpha-admin/api/users/(:segment)/status', 'App\AdminController::apiUpdateUserStatus/$1', ['filter' => 'auth:admin']);
-$routes->post('alpha-admin/api/users/(:segment)/adjust-cc', 'App\AdminController::apiAdjustUserCC/$1',  ['filter' => 'auth:admin']);
+$routes->post('alpha-admin/api/users/(:segment)/adjust-cc', 'App\AdminController::apiAdjustUserCC/$1', ['filter' => 'auth:admin']);
 
 // Admin — Creator Management API (AJAX, auth:admin)
-$routes->get('alpha-admin/api/creators',                          'App\AdminController::apiCreators',                    ['filter' => 'auth:admin']);
-$routes->get('alpha-admin/api/creators/(:segment)',               'App\AdminController::apiCreatorDetail/$1',            ['filter' => 'auth:admin']);
-$routes->post('alpha-admin/api/creators/(:segment)/status',       'App\AdminController::apiUpdateCreatorStatus/$1',      ['filter' => 'auth:admin']);
+$routes->get('alpha-admin/api/creators', 'App\AdminController::apiCreators', ['filter' => 'auth:admin']);
+$routes->get('alpha-admin/api/creators/(:segment)', 'App\AdminController::apiCreatorDetail/$1', ['filter' => 'auth:admin']);
+$routes->post('alpha-admin/api/creators/(:segment)/status', 'App\AdminController::apiUpdateCreatorStatus/$1', ['filter' => 'auth:admin']);
 $routes->post('alpha-admin/api/creators/(:segment)/starsoul-status', 'App\AdminController::apiUpdateCreatorStarsoulStatus/$1', ['filter' => 'auth:admin']);
 
 // Admin — Transaction History API (AJAX, auth:admin)
-$routes->get('alpha-admin/api/transactions',         'App\AdminController::apiTransactions',      ['filter' => 'auth:admin']);
-$routes->get('alpha-admin/api/transactions/stats',   'App\AdminController::apiTransactionStats',  ['filter' => 'auth:admin']);
+$routes->get('alpha-admin/api/transactions', 'App\AdminController::apiTransactions', ['filter' => 'auth:admin']);
+$routes->get('alpha-admin/api/transactions/stats', 'App\AdminController::apiTransactionStats', ['filter' => 'auth:admin']);
 
 
 
@@ -201,6 +202,7 @@ $routes->group('creator', ['filter' => 'auth:creator'], function ($routes) {
     $routes->get('monetization/history', 'Creator\MonetizationController::history');
     $routes->get('monetization/export/excel', 'Creator\MonetizationController::exportExcel');
     $routes->get('monetization/export/pdf', 'Creator\MonetizationController::exportPdf');
+    $routes->get('monetization/report/print', 'Creator\MonetizationController::printReport');
     $routes->get('monetization/receipt/(:num)', 'Creator\MonetizationController::receipt/$1');
     $routes->get('stats/works/(:num)', 'Creator\StatsController::work/$1');
     $routes->get('content/(:num)/stats', 'Creator\StatsController::work/$1');
@@ -241,6 +243,9 @@ $routes->group('api/v1', function ($routes) {
     $routes->get('works', 'Api\WorkApiController::index');
     $routes->get('works/(:num)', 'Api\WorkApiController::show/$1');
 });
+
+// PWA
+$routes->get('offline', 'Home::offline');
 
 // Public Creator Profile (Placed at the end to avoid shadowing system routes)
 $routes->get('creator/(:segment)', 'App\ProfileController::show/$1');

@@ -122,7 +122,7 @@
                                     <div class="w-28 h-28 md:w-36 md:h-36 rounded-[30px] bg-white/10 border border-white/20 p-2 shadow-2xl">
                                         <div class="w-full h-full rounded-[24px] bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center text-white text-5xl font-black overflow-hidden">
                                             <?php if (!empty($profileImage)): ?>
-                                                <img src="<?= base_url('image/profile/' . $profileImage) ?>" alt="<?= esc($displayName) ?>" class="w-full h-full object-cover">
+                                                <img src="<?= profile_url($profileImage) ?>" alt="<?= esc($displayName) ?>" class="w-full h-full object-cover">
                                             <?php else: ?>
                                                 <?= esc($initial) ?>
                                             <?php endif; ?>

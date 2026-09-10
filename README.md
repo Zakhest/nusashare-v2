@@ -7,20 +7,24 @@ Proyek ini dibangun dengan CodeIgniter 4 dan berjalan di atas PHP 8.1 atau lebih
 ## Ringkasan Fitur Terbaru
 
 - Landing page, halaman legal, login/register user, login/register kreator, forgot password, dan reset password.
-- Explore karya dengan spotlight, filter genre/tipe, mode gallery, mode story, pencarian karya, dan pencarian user/kreator.
-- Format konten: text, novel, light novel, comic, image, dan PDF pada skema konten.
+- Explore karya dengan spotlight, filter genre/tipe, mode gallery, mode story, kategori artikel, pencarian karya, dan pencarian user/kreator.
+- Format konten: text, novel, light novel, comic, image, PDF, dan artikel pada skema konten.
+- Artikel publik dengan URL slug, parser body artikel, infobox, tabel, gambar inline, live preview editor, like, bookmark, komentar, share, dan view counter.
 - Detail karya, reader chapter, navigasi chapter, komentar per karya/chapter, hapus komentar sendiri, like, bookmark, follow/unfollow kreator, statistik follow, dan profil publik.
 - View counter dengan threshold baca 2 menit agar statistik lebih bermakna.
 - Reading history dan resume terakhir dibaca untuk pengguna login.
 - Sistem Cooling Credit (CC) untuk top up, unlock karya, unlock chapter, checkout cart, download karya, dan pendapatan kreator.
 - Konten berbayar mendukung akses full, akses per chapter, harga preview, harga beli permanen, timer preview, watermark gambar, blur/lock state, dan chapter terkunci.
+- Kreator dapat mengaktifkan/nonaktifkan izin unduhan per karya melalui opsi `allow_downloads`; artikel otomatis tidak masuk alur download/cart.
 - Cart karya downloadable dengan checkout CC, halaman auto-download setelah checkout, download ZIP untuk karya gambar, dan export PDF untuk karya teks/novel/light novel/comic.
+- File unduhan diberi proteksi berbasis akun pembeli: ZIP memakai password dan PDF memakai pembatasan/enkripsi bila dukungan library tersedia.
 - Dashboard pengguna untuk profil, bookmark/koleksi, cart, follows, top up, dan notifikasi realtime/AJAX.
 - Dashboard kreator untuk statistik ringkas, manajemen karya, chapter, galeri gambar, publish/archive/delete, statistik karya, analitik per karya, monetisasi, penarikan dummy, riwayat transaksi, export Excel/PDF, dan receipt transaksi.
 - Panel admin `alpha-admin` untuk dashboard statistik, user management, creator management, status Starsoul, penyesuaian saldo CC, transaksi, top up, ekonomi, konten, laporan, gallery, CMS landing/page/FAQ, audit, sistem, dan notifikasi.
 - API v1 untuk login/register/logout, daftar karya, detail karya, profil user, like/comment/bookmark, saldo top up, dan checkout top up.
 - Proxy gambar untuk cover, galeri, profil, gambar chapter, remote image, blur/lock state, dan watermark.
 - Notification service terpusat untuk follow, like, comment, purchase, unlock, unlock chapter, top up, dan notifikasi sistem.
+- Progressive Web App (PWA): manifest aplikasi, icon multi-ukuran, install prompt, service worker, cache statis/dinamis, fallback `/offline`, indikator online/offline, dan background sync notifikasi.
 
 ## Teknologi
 
@@ -34,6 +38,7 @@ Proyek ini dibangun dengan CodeIgniter 4 dan berjalan di atas PHP 8.1 atau lebih
 - Tailwind CDN pada beberapa halaman
 - Chart.js pada area admin/dashboard tertentu
 - ZipArchive untuk paket download gambar
+- Service Worker, Web App Manifest, Cache API, Background Sync, dan IndexedDB untuk fitur PWA
 
 ## Struktur Folder
 
@@ -49,7 +54,7 @@ app/
   ThirdParty/      Library vendor lokal tambahan
   Views/           Tampilan publik, user, creator, admin, auth, works
 assets/            Asset CSS, JavaScript, dan icon aplikasi
-public/            Public document root dan asset publik
+public/            Public document root, manifest, service worker, dan asset publik
 tests/             Test PHPUnit
 tmp/               Script sementara untuk perubahan database
 vendor/            Dependency Composer
@@ -68,9 +73,11 @@ writable/          Log, session, upload, download sementara, cache, debugbar
 - `/works/{id}` detail karya
 - `/works/{id}/read/{chapterId}` baca chapter
 - `/works/{id}/download` download ZIP untuk karya gambar gratis
+- `/artikel/{slug}` halaman artikel publik
 - `/content/{segment}` alias halaman konten
 - `/user/{username}` profil publik pengguna/kreator
 - `/creator/{username}` profil publik kreator
+- `/offline` halaman fallback saat PWA tidak memiliki koneksi
 - `/terms` dan `/privacy`
 
 ### User Area
@@ -116,6 +123,7 @@ Area ini memerlukan login sebagai creator.
 - `/creator/content/{id}/chapters/create`
 - `/creator/content/{id}/images`
 - `/creator/content/{id}/stats`
+- `POST /creator/artikel/upload-image`
 - `/creator/stats`
 - `/creator/monetization`
 - `/creator/monetization/history`
@@ -125,7 +133,7 @@ Area ini memerlukan login sebagai creator.
 - `/creator/stats/works/{id}`
 - `/creator/settings`
 
-Fitur creator mencakup draft/publish/archive/delete, upload cover dan galeri, chapter editor, chapter lock, pengaturan harga CC, status ongoing/ended, statistik dashboard, statistik per karya, analitik engagement, analitik revenue/unlock, monetisasi, dan profil kreator.
+Fitur creator mencakup draft/publish/archive/delete, upload cover dan galeri, chapter editor, chapter lock, editor artikel dengan slug, body, infobox, tabel, gambar inline, live preview, pengaturan harga CC, kontrol izin unduhan per karya, status ongoing/ended, statistik dashboard, statistik per karya, analitik engagement, analitik revenue/unlock, monetisasi, dan profil kreator.
 
 ### Admin Area
 
@@ -184,18 +192,30 @@ Endpoint utama:
 - Status publik yang tampil di explore adalah `published`, `curated`, dan `museum`.
 - Karya chapter-based mencakup text, novel, light novel, dan comic.
 - Karya image menggunakan galeri gambar, proxy image, watermark, blur lock, preview timer, dan download ZIP.
+- Karya artikel menggunakan body tunggal dengan slug publik, parser infobox/tabel/gambar, halaman `/artikel/{slug}`, dan interaksi like/bookmark/comment.
 - Karya text/novel/light novel/comic dapat diexport sebagai PDF setelah checkout/download valid.
 - Chapter dapat dikunci dengan harga CC masing-masing.
 - Harga karya mendukung `price` untuk akses/preview dan `purchase_price` untuk pembelian permanen.
+- Izin unduhan dikontrol oleh `allow_downloads`; jika dimatikan, karya tidak bisa ditambahkan ke cart, checkout, halaman download-all, maupun endpoint unduhan langsung.
 
 ### Cart dan Download
 
 - User dapat memasukkan karya downloadable ke cart.
+- Karya hanya bisa masuk cart jika tipe kontennya mendukung download dan kreator mengaktifkan `allow_downloads`.
 - Checkout cart memotong saldo CC user dan mencatat transaksi keluar untuk pembeli.
 - Pendapatan dari pembelian/download dicatat sebagai transaksi masuk untuk kreator.
 - Setelah checkout, user diarahkan ke halaman download-all untuk mengunduh semua karya yang baru dibeli.
-- Karya gambar dikemas sebagai ZIP, sedangkan karya berbasis chapter dikemas menjadi PDF menggunakan Dompdf.
+- Karya gambar dikemas sebagai ZIP berpassword, sedangkan karya berbasis chapter dikemas menjadi PDF menggunakan Dompdf dengan metadata kepemilikan pembeli.
 - Download berbayar dicek ulang melalui riwayat transaksi agar file tidak bisa diambil tanpa checkout.
+
+### PWA dan Offline
+
+- `manifest.json` menyediakan nama aplikasi, icon, warna tema, mode standalone, shortcut ke explore/dashboard, dan metadata install.
+- `sw.js` melakukan precache halaman/aset penting, cache-first untuk asset statis, stale-while-revalidate untuk gambar proxy, dan network-first untuk halaman HTML.
+- Route `/offline` menjadi fallback ketika halaman belum tersedia di cache dan koneksi terputus.
+- `assets/js/pwa.js` mendaftarkan service worker, menampilkan prompt install, toast update aplikasi, dan indikator koneksi online/offline.
+- Background Sync digunakan untuk mengambil notifikasi terbaru dan menyimpannya ke IndexedDB sebelum dibroadcast ke `notifications.js`.
+- Endpoint API, notifikasi, cart, top up, dan logout sengaja dibuat network-only agar data transaksi tetap segar.
 
 ### Statistik Kreator
 
@@ -391,6 +411,7 @@ Migration yang tersedia mencakup fitur:
 - Cart items
 - Transactions
 - Purchase price karya
+- Allow downloads karya (`allow_downloads`)
 - Perbaikan tipe `notifications.user_id`
 
 Ada juga script manual database di root dan folder `tmp/`. Gunakan script tersebut dengan hati-hati, terutama jika database sudah berisi data produksi.
@@ -401,6 +422,7 @@ Ada juga script manual database di root dan folder `tmp/`. Gunakan script terseb
 - Download sementara tersimpan di `writable/downloads` atau folder upload runtime sesuai proses.
 - Cover publik tersimpan di `public/uploads/covers`.
 - Asset publik tersimpan di `public/assets`.
+- Asset PWA tersimpan di `assets/pwa` dan `public/assets/pwa`, sedangkan manifest/service worker tersedia di root publik (`manifest.json`, `sw.js`, `public/manifest.json`, `public/sw.js`).
 - Log aplikasi tersimpan di `writable/logs`.
 - Session dan debugbar tersimpan di `writable/session` dan `writable/debugbar`.
 - Upload cover/arts juga dapat dikirim ke remote upload service melalui `App\Services\File\RemoteUploadService`.

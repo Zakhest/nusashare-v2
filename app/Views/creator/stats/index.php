@@ -216,7 +216,7 @@ $typeColors = [
                     ?>
                     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
                         <?php if ($avatarUrl): ?>
-                            <img src="<?= base_url($avatarUrl) ?>" alt="avatar" class="w-full h-full object-cover">
+                            <img src="<?= profile_url($avatarUrl) ?>" alt="avatar" class="w-full h-full object-cover">
                         <?php else: ?>
                             <?= strtoupper(substr($username, 0, 1)) ?>
                         <?php endif; ?>

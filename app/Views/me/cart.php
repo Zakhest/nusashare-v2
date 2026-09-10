@@ -117,8 +117,12 @@
                     <span class="text-xs font-bold text-indigo-900" id="live-balance"><?= number_format($balanceNav) ?> CC</span>
                 </a>
                 <div class="flex items-center gap-3 border-l pl-4 border-slate-100">
-                    <div class="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-[#4F46E5] font-bold text-sm">
-                        <?= strtoupper(substr($username, 0, 1)) ?>
+                    <div class="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-[#4F46E5] font-bold text-sm overflow-hidden flex-shrink-0">
+                        <?php if (!empty($profile['profile_image'])): ?>
+                            <img src="<?= profile_url($profile['profile_image']) ?>" alt="Avatar" class="w-full h-full object-cover">
+                        <?php else: ?>
+                            <?= strtoupper(substr($username, 0, 1)) ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -178,7 +182,9 @@
                             $t          = $item['content_type'];
                             $dlFormat   = ($t === 'image') ? 'ZIP' : 'PDF';
                             $dlIcon     = ($t === 'image') ? 'photo_library' : 'picture_as_pdf';
-                            $itemPrice  = ((int)($item['purchase_price'] ?? 0) > 0) ? (int)$item['purchase_price'] : (int)$item['price'];
+                            $isOwnWork  = (string)($item['creator_id'] ?? '') === (string)session()->get('userId');
+                            $rawPrice   = ((int)($item['purchase_price'] ?? 0) > 0) ? (int)$item['purchase_price'] : (int)$item['price'];
+                            $itemPrice  = $isOwnWork ? 0 : $rawPrice;
                             $typeLabel  = match(true) {
                                 $t === 'novel'       => 'Novel',
                                 $t === 'light_novel' => 'Light Novel',
@@ -211,14 +217,18 @@
                                             <span class="material-symbols-outlined text-[11px]"><?= $dlIcon ?></span>
                                             <?= $dlFormat ?>
                                         </span>
-                                        <?php if ($item['is_paid']): ?>
+                                        <?php if ($isOwnWork): ?>
+                                            <span class="text-[10px] font-black px-2 py-0.5 rounded-md badge-free">KARYA SAYA</span>
+                                        <?php elseif ($item['is_paid']): ?>
                                             <span class="text-[10px] font-black px-2 py-0.5 rounded-md badge-paid"><?= number_format($itemPrice) ?> CC</span>
                                         <?php else: ?>
                                             <span class="text-[10px] font-black px-2 py-0.5 rounded-md badge-free">GRATIS</span>
                                         <?php endif; ?>
                                     </div>
-                                    <h4 class="font-bold text-slate-900 truncate text-sm mb-0.5"><?= htmlspecialchars($item['title']) ?></h4>
-                                    <p class="text-xs text-slate-400">oleh <?= htmlspecialchars($item['creator_name']) ?></p>
+                                    <h4 class="font-bold text-slate-900 truncate text-sm mb-0.5">
+                                        <a href="<?= base_url('works/' . $item['work_id']) ?>" class="hover:text-indigo-600 transition-colors"><?= htmlspecialchars($item['title']) ?></a>
+                                    </h4>
+                                    <p class="text-xs text-slate-400">oleh <a href="<?= base_url('creator/' . urlencode($item['creator_name'])) ?>" class="hover:text-indigo-600 hover:underline transition-colors"><?= htmlspecialchars($item['creator_name']) ?></a></p>
                                 </div>
 
                                 <!-- Actions -->
@@ -231,7 +241,7 @@
                                         </a>
                                     <?php else: ?>
                                         <span class="text-sm font-bold text-slate-900">
-                                            <?= $item['is_paid'] ? number_format($itemPrice) . ' CC' : 'Gratis' ?>
+                                            <?= $isOwnWork ? 'Karya Saya' : ($item['is_paid'] ? number_format($itemPrice) . ' CC' : 'Gratis') ?>
                                         </span>
                                     <?php endif; ?>
                                     <button onclick="removeFromCart(<?= $item['work_id'] ?>)"
@@ -251,7 +261,7 @@
                             <!-- Header -->
                             <div class="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-5">
                                 <h3 class="text-white font-black text-lg">Ringkasan Pesanan</h3>
-                                <p class="text-indigo-200 text-xs mt-0.5"><?= count($cartItems) ?> item &bull; <?= count(array_filter($cartItems, fn($i) => $i['is_paid'])) ?> berbayar</p>
+                                <p class="text-indigo-200 text-xs mt-0.5"><?= count($cartItems) ?> item &bull; <?= count(array_filter($cartItems, fn($i) => $i['is_paid'] && (string)($i['creator_id'] ?? '') !== (string)session()->get('userId'))) ?> berbayar</p>
                             </div>
 
                             <div class="p-6 space-y-4">
@@ -261,8 +271,11 @@
                                     <div class="flex justify-between items-center text-sm">
                                         <span class="text-slate-600 truncate max-w-[160px]"><?= htmlspecialchars($item['title']) ?></span>
                                         <span class="font-bold text-slate-900 flex-shrink-0 ml-2">
-                                            <?php $summaryPrice = ((int)($item['purchase_price'] ?? 0) > 0) ? (int)$item['purchase_price'] : (int)$item['price']; ?>
-                                            <?= $item['is_paid'] ? number_format($summaryPrice) . ' CC' : '<span class="text-emerald-600 text-xs font-black">GRATIS</span>' ?>
+                                            <?php
+                                                $summaryIsOwn = (string)($item['creator_id'] ?? '') === (string)session()->get('userId');
+                                                $summaryPrice = ((int)($item['purchase_price'] ?? 0) > 0) ? (int)$item['purchase_price'] : (int)$item['price'];
+                                            ?>
+                                            <?= $summaryIsOwn ? '<span class="text-indigo-600 text-xs font-black">KARYA SAYA</span>' : ($item['is_paid'] ? number_format($summaryPrice) . ' CC' : '<span class="text-emerald-600 text-xs font-black">GRATIS</span>') ?>
                                         </span>
                                     </div>
                                     <?php endforeach; ?>

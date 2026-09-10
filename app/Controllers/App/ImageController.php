@@ -157,11 +157,27 @@ class ImageController extends BaseController
 
     /**
      * Proxy for Profile Image — hides real file path from browser.
-
      * Route: GET image/profile/(:segment)
      */
     public function profile($filename)
     {
+        // Decode base64 jika filename merupakan URL terenkode
+        $decodedUrl = base64_decode($filename, true);
+        if ($decodedUrl && (str_starts_with($decodedUrl, 'http://') || str_starts_with($decodedUrl, 'https://'))) {
+            try {
+                $client = \Config\Services::curlrequest();
+                $resp   = $client->get($decodedUrl, ['http_errors' => false, 'verify' => false, 'timeout' => 10]);
+                if ($resp->getStatusCode() === 200) {
+                    return $this->response
+                        ->setHeader('Content-Type', $resp->getHeaderLine('Content-Type') ?: 'image/jpeg')
+                        ->setHeader('Cache-Control', 'public, max-age=604800')
+                        ->setBody($resp->getBody());
+                }
+            } catch (\Exception $e) {
+                return $this->response->setStatusCode(404);
+            }
+        }
+
         // Sanitize: only allow safe filename characters (no path traversal)
         if (!preg_match('/^[\w\-\.]+$/i', $filename)) {
             return $this->response->setStatusCode(400)->setBody('Invalid filename.');
@@ -170,7 +186,22 @@ class ImageController extends BaseController
         $filePath = 'C:/xampp/htdocs/image-nusashare/profile/' . $filename;
 
         if (!file_exists($filePath)) {
-            return $this->response->setStatusCode(404);
+            $altPaths = [
+                WRITEPATH . 'uploads/profile/' . $filename,
+                FCPATH . 'uploads/profile/' . $filename,
+                FCPATH . 'assets/img/' . $filename,
+            ];
+            $found = false;
+            foreach ($altPaths as $alt) {
+                if (file_exists($alt)) {
+                    $filePath = $alt;
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) {
+                return $this->response->setStatusCode(404);
+            }
         }
 
         $mimeType = mime_content_type($filePath) ?: 'image/jpeg';
@@ -185,7 +216,6 @@ class ImageController extends BaseController
 
         return $this->imageResponse($mimeType, $content, $etag, $lastModified);
     }
-
 
     /**
      * Check if request is authorized

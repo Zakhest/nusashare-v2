@@ -201,6 +201,73 @@
                     <?php endif; ?>
                 </div>
 
+                <!-- Action Button for Chapter-Based Works -->
+                <div class="mt-10 sm:mt-12 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+                    <?php if (session()->get('isLoggedIn')): ?>
+                        <button id="wishlistBtnImg"
+                            class="w-full sm:w-auto justify-center flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-sm transition-all group shadow-sm border <?= $hasBookmarked ? 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700' : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100' ?>"
+                            data-work-id="<?= $work['id'] ?>"
+                            data-bookmarked="<?= $hasBookmarked ? '1' : '0' ?>">
+                            <span class="material-symbols-outlined group-hover:scale-110 transition-transform" id="wishlistIconImg"
+                                style="<?= $hasBookmarked ? "font-variation-settings: 'FILL' 1" : '' ?>">
+                                bookmark
+                            </span>
+                            <span id="wishlistLabelImg"><?= $hasBookmarked ? 'Tersimpan di Wishlist' : 'Tambahkan ke Wishlist' ?></span>
+                        </button>
+                    <?php else: ?>
+                        <a href="<?= base_url('login') ?>" class="w-full sm:w-auto justify-center bg-indigo-50 border border-indigo-200 text-indigo-600 px-8 py-3 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-all flex items-center gap-2 group shadow-sm">
+                            <span class="material-symbols-outlined group-hover:scale-110 transition-transform">bookmark_add</span>
+                            Login untuk Simpan ke Wishlist
+                        </a>
+                    <?php endif; ?>
+
+                    <?php 
+                        $isDownloadable = in_array($work['content_type'], ['image', 'text', 'novel', 'light_novel', 'comic']);
+                        $dlFormat = ($work['content_type'] === 'image') ? 'ZIP' : 'PDF';
+                        $buyPrice = ((int)($work['purchase_price'] ?? 0) > 0) ? (int)$work['purchase_price'] : (int)$work['price'];
+                    ?>
+                    <?php if ($isDownloadable): ?>
+                        <?php if ((int)($work['allow_downloads'] ?? 1) !== 1): ?>
+                            <span class="w-full sm:w-auto justify-center bg-slate-100 border border-slate-200 text-slate-500 px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2">
+                                <span class="material-symbols-outlined">block</span>
+                                Download Dinonaktifkan
+                            </span>
+                        <?php else: ?>
+                            <?php if (!$work['is_paid']): ?>
+                                <a href="<?= base_url('works/' . $work['id'] . '/download') ?>" class="w-full sm:w-auto justify-center btn-primary px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg hover:shadow-indigo-200/50 transition-all group">
+                                    <span class="material-symbols-outlined group-hover:-translate-y-1 transition-transform">download</span>
+                                    Download <?= $dlFormat ?> (Gratis)
+                                </a>
+                            <?php else: ?>
+                                <?php if (!session()->get('isLoggedIn')): ?>
+                                    <a href="<?= base_url('login') ?>" class="w-full sm:w-auto justify-center bg-indigo-50 border border-indigo-200 text-indigo-600 px-8 py-3 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-all flex items-center gap-2 group shadow-sm">
+                                        <span class="material-symbols-outlined group-hover:scale-110 transition-transform">login</span>
+                                        Beli & Unduh <?= $dlFormat ?> (<?= number_format($buyPrice) ?> CC)
+                                    </a>
+                                <?php elseif ($isOwner || $hasPurchased): ?>
+                                    <a href="<?= base_url('works/' . $work['id'] . '/download') ?>" class="w-full sm:w-auto justify-center bg-emerald-600 border border-emerald-600 text-white hover:bg-emerald-700 px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg hover:shadow-emerald-200/50 transition-all group">
+                                        <span class="material-symbols-outlined group-hover:-translate-y-1 transition-transform">download</span>
+                                        Download <?= $dlFormat ?> (Sudah Dibeli)
+                                    </a>
+                                <?php else: ?>
+                                    <button id="cartBtnDetail"
+                                        class="w-full sm:w-auto justify-center flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-sm transition-all group shadow-sm border <?= $inCart ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700' ?>"
+                                        data-work-id="<?= $work['id'] ?>"
+                                        data-in-cart="<?= $inCart ? '1' : '0' ?>"
+                                        onclick="toggleCartDetail(this, <?= $work['id'] ?>)">
+                                        <span class="material-symbols-outlined group-hover:scale-110 transition-transform cart-icon">
+                                            <?= $inCart ? 'shopping_cart_checkout' : 'add_shopping_cart' ?>
+                                        </span>
+                                        <span class="cart-label">
+                                            <?= $inCart ? 'Di Keranjang' : 'Beli & Unduh (' . number_format($buyPrice) . ' CC)' ?>
+                                        </span>
+                                    </button>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+
             <?php elseif ($work['content_type'] === 'image'): ?>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 images-grid">
                     <?php if (!empty($images)): ?>
@@ -274,7 +341,7 @@
                             data-bookmarked="<?= $hasBookmarked ? '1' : '0' ?>">
                             <span class="material-symbols-outlined group-hover:scale-110 transition-transform" id="wishlistIconImg"
                                 style="<?= $hasBookmarked ? "font-variation-settings: 'FILL' 1" : '' ?>">
-                                <?= $hasBookmarked ? 'bookmark' : 'bookmark_add' ?>
+                                bookmark
                             </span>
                             <span id="wishlistLabelImg"><?= $hasBookmarked ? 'Tersimpan di Wishlist' : 'Tambahkan ke Wishlist' ?></span>
                         </button>
@@ -284,11 +351,51 @@
                             Login untuk Simpan ke Wishlist
                         </a>
                     <?php endif; ?>
-                    <?php if (!$work['is_paid']): ?>
-                        <a href="<?= base_url('works/' . $work['id'] . '/download') ?>" class="w-full sm:w-auto justify-center btn-primary px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg hover:shadow-indigo-200/50 transition-all group">
-                            <span class="material-symbols-outlined group-hover:-translate-y-1 transition-transform">download</span>
-                            Download Gambar (Gratis)
-                        </a>
+
+                    <?php 
+                        $isDownloadable = in_array($work['content_type'], ['image', 'text', 'novel', 'light_novel', 'comic']);
+                        $dlFormat = ($work['content_type'] === 'image') ? 'ZIP' : 'PDF';
+                        $buyPrice = ((int)($work['purchase_price'] ?? 0) > 0) ? (int)$work['purchase_price'] : (int)$work['price'];
+                    ?>
+                    <?php if ($isDownloadable): ?>
+                        <?php if ((int)($work['allow_downloads'] ?? 1) !== 1): ?>
+                            <span class="w-full sm:w-auto justify-center bg-slate-100 border border-slate-200 text-slate-500 px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2">
+                                <span class="material-symbols-outlined">block</span>
+                                Download Dinonaktifkan
+                            </span>
+                        <?php else: ?>
+                            <?php if (!$work['is_paid']): ?>
+                                <a href="<?= base_url('works/' . $work['id'] . '/download') ?>" class="w-full sm:w-auto justify-center btn-primary px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg hover:shadow-indigo-200/50 transition-all group">
+                                    <span class="material-symbols-outlined group-hover:-translate-y-1 transition-transform">download</span>
+                                    Download <?= $dlFormat ?> (Gratis)
+                                </a>
+                            <?php else: ?>
+                                <?php if (!session()->get('isLoggedIn')): ?>
+                                    <a href="<?= base_url('login') ?>" class="w-full sm:w-auto justify-center bg-indigo-50 border border-indigo-200 text-indigo-600 px-8 py-3 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-all flex items-center gap-2 group shadow-sm">
+                                        <span class="material-symbols-outlined group-hover:scale-110 transition-transform">login</span>
+                                        Beli & Unduh <?= $dlFormat ?> (<?= number_format($buyPrice) ?> CC)
+                                    </a>
+                                <?php elseif ($isOwner || $hasPurchased): ?>
+                                    <a href="<?= base_url('works/' . $work['id'] . '/download') ?>" class="w-full sm:w-auto justify-center bg-emerald-600 border border-emerald-600 text-white hover:bg-emerald-700 px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg hover:shadow-emerald-200/50 transition-all group">
+                                        <span class="material-symbols-outlined group-hover:-translate-y-1 transition-transform">download</span>
+                                        Download <?= $dlFormat ?> (Sudah Dibeli)
+                                    </a>
+                                <?php else: ?>
+                                    <button id="cartBtnDetail"
+                                        class="w-full sm:w-auto justify-center flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-sm transition-all group shadow-sm border <?= $inCart ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700' ?>"
+                                        data-work-id="<?= $work['id'] ?>"
+                                        data-in-cart="<?= $inCart ? '1' : '0' ?>"
+                                        onclick="toggleCartDetail(this, <?= $work['id'] ?>)">
+                                        <span class="material-symbols-outlined group-hover:scale-110 transition-transform cart-icon">
+                                            <?= $inCart ? 'shopping_cart_checkout' : 'add_shopping_cart' ?>
+                                        </span>
+                                        <span class="cart-label">
+                                            <?= $inCart ? 'Di Keranjang' : 'Beli & Unduh (' . number_format($buyPrice) . ' CC)' ?>
+                                        </span>
+                                    </button>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
 
@@ -501,6 +608,106 @@
             if (btn)    btn.addEventListener('click',    () => toggleWishlist(WORK_ID));
             if (btnImg) btnImg.addEventListener('click', () => toggleWishlist(WORK_ID));
         });
+    })();
+    </script>
+
+    <!-- AJAX Cart System for Details Page -->
+    <script>
+    (function () {
+        const BASE_URL = '<?= rtrim(base_url(), '/') ?>';
+        const WORK_ID  = <?= (int)$work['id'] ?>;
+
+        function showToast(message, icon, color) {
+            const toast = document.getElementById('wishlist-toast');
+            const toastIcon = document.getElementById('toast-icon');
+            const toastMsg  = document.getElementById('toast-message');
+            if (toastIcon) toastIcon.textContent = icon || 'shopping_cart';
+            if (toastMsg) toastMsg.textContent  = message;
+            if (toast) {
+                toast.style.background = color || '#0F172A';
+                // Show
+                toast.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+                toast.classList.add('opacity-100', 'translate-y-0');
+                // Hide after 3s
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+                    toast.classList.remove('opacity-100', 'translate-y-0');
+                }, 3000);
+            }
+        }
+
+        window.toggleCartDetail = async function (btn, workId) {
+            const inCart = btn.dataset.inCart === '1';
+            const url    = inCart
+                ? BASE_URL + '/cart/remove/' + workId
+                : BASE_URL + '/cart/add/'    + workId;
+
+            const icon  = btn.querySelector('.cart-icon');
+            const label = btn.querySelector('.cart-label');
+            const price = <?= (int)($work['purchase_price'] > 0 ? $work['purchase_price'] : $work['price']) ?>;
+
+            // Optimistic UI update
+            if (!inCart) {
+                btn.dataset.inCart = '1';
+                if (icon) icon.textContent = 'shopping_cart_checkout';
+                if (label) label.textContent = 'Di Keranjang';
+                btn.classList.remove('bg-indigo-600', 'border-indigo-600', 'text-white', 'hover:bg-indigo-700');
+                btn.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-700');
+            } else {
+                btn.dataset.inCart = '0';
+                if (icon) icon.textContent = 'add_shopping_cart';
+                if (label) label.textContent = 'Beli & Unduh (' + price.toLocaleString() + ' CC)';
+                btn.classList.remove('bg-emerald-50', 'border-emerald-200', 'text-emerald-700');
+                btn.classList.add('bg-indigo-600', 'border-indigo-600', 'text-white', 'hover:bg-indigo-700');
+            }
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await res.json();
+
+                if (data.status === 'success' || data.status === 'already') {
+                    if (!inCart) {
+                        showToast('Ditambahkan ke Keranjang!', 'add_shopping_cart', '#4F46E5');
+                    } else {
+                        showToast('Dihapus dari Keranjang.', 'remove_shopping_cart', '#475569');
+                    }
+                } else {
+                    // Revert on error
+                    btn.dataset.inCart = inCart ? '1' : '0';
+                    if (!inCart) {
+                        if (icon) icon.textContent = 'add_shopping_cart';
+                        if (label) label.textContent = 'Beli & Unduh (' + price.toLocaleString() + ' CC)';
+                        btn.classList.remove('bg-emerald-50', 'border-emerald-200', 'text-emerald-700');
+                        btn.classList.add('bg-indigo-600', 'border-indigo-600', 'text-white', 'hover:bg-indigo-700');
+                    } else {
+                        if (icon) icon.textContent = 'shopping_cart_checkout';
+                        if (label) label.textContent = 'Di Keranjang';
+                        btn.classList.remove('bg-indigo-600', 'border-indigo-600', 'text-white', 'hover:bg-indigo-700');
+                        btn.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-700');
+                    }
+                    showToast(data.message || 'Terjadi kesalahan.', 'error', '#EF4444');
+                }
+            } catch (err) {
+                // Revert on network error
+                btn.dataset.inCart = inCart ? '1' : '0';
+                if (!inCart) {
+                    if (icon) icon.textContent = 'add_shopping_cart';
+                    if (label) label.textContent = 'Beli & Unduh (' + price.toLocaleString() + ' CC)';
+                    btn.classList.remove('bg-emerald-50', 'border-emerald-200', 'text-emerald-700');
+                    btn.classList.add('bg-indigo-600', 'border-indigo-600', 'text-white', 'hover:bg-indigo-700');
+                } else {
+                    if (icon) icon.textContent = 'shopping_cart_checkout';
+                    if (label) label.textContent = 'Di Keranjang';
+                    btn.classList.remove('bg-indigo-600', 'border-indigo-600', 'text-white', 'hover:bg-indigo-700');
+                    btn.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-700');
+                }
+                showToast('Gagal terhubung. Coba lagi.', 'wifi_off', '#EF4444');
+            }
+        };
     })();
     </script>
 

@@ -1,0 +1,97 @@
+﻿{
+  "name": "NusaShare",
+  "short_name": "NusaShare",
+  "description": "Platform kreator digital Indonesia â€” jelajahi, beli, dan bagikan karya terbaik.",
+  "start_url": "/nusa/",
+  "scope": "/nusa/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#EEF2FF",
+  "theme_color": "#4F46E5",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": [
+    "entertainment",
+    "social",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/nusa/assets/pwa/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/nusa/assets/pwa/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/nusa/assets/pwa/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/nusa/assets/pwa/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/nusa/assets/pwa/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "/nusa/assets/pwa/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/nusa/assets/pwa/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "/nusa/assets/pwa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Jelajahi Karya",
+      "short_name": "Jelajah",
+      "description": "Temukan karya terbaru dari kreator Indonesia",
+      "url": "/nusa/explore",
+      "icons": [
+        {
+          "src": "/nusa/assets/icon/logonus.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Buka dashboard kamu",
+      "url": "/nusa/dashboard",
+      "icons": [
+        {
+          "src": "/nusa/assets/icon/logonus.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/nusa/assets/icon/logonus.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "NusaShare â€“ Platform Kreator Indonesia"
+    }
+  ]
+}

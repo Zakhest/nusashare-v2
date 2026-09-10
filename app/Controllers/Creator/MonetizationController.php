@@ -369,7 +369,7 @@ class MonetizationController extends BaseController
     // ─────────────────────────────────────────────────────────────────────────────
     // GET /creator/monetization/export/pdf
     // ─────────────────────────────────────────────────────────────────────────────
-    public function exportPdf()
+    public function exportPdf(bool $inline = false)
     {
         if ($r = $this->guard()) return $r;
 
@@ -401,23 +401,28 @@ class MonetizationController extends BaseController
             $typeLabel = $row['type'] === 'in' ? 'Masuk'    : 'Keluar';
             $sign      = $row['type'] === 'in' ? '+'        : '-';
             $desc      = htmlspecialchars($row['description'], ENT_QUOTES, 'UTF-8');
+            $category  = htmlspecialchars(ucfirst((string)$row['category']), ENT_QUOTES, 'UTF-8');
             $rows .= "
             <tr>
-                <td style='padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:11px;'>" . $row['no'] . "</td>
-                <td style='padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;'>
+                <td class='cell muted'>" . $row['no'] . "</td>
+                <td class='cell'>
                     <strong style='color:#0f172a;'>" . date('d M Y', strtotime($row['date'])) . "</strong><br>
                     <span style='color:#94a3b8;font-size:10px;'>" . date('H:i', strtotime($row['date'])) . " WIB</span>
                 </td>
-                <td style='padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;color:#334155;'>" . htmlspecialchars(ucfirst($row['category'])) . "</td>
-                <td style='padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;color:#334155;max-width:220px;'>" . $desc . "</td>
-                <td style='padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:right;font-size:11px;'>
+                <td class='cell'>" . $category . "</td>
+                <td class='cell desc'>" . $desc . "</td>
+                <td class='cell amount'>
                     <strong style='color:{$typeColor};'>{$sign}" . number_format($row['amount']) . " CC</strong><br>
                     <span style='color:#94a3b8;font-size:10px;'>Rp " . number_format($row['amount_rp']) . "</span>
                 </td>
-                <td style='padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:center;'>
-                    <span style='background:{$typeBg};color:{$typeColor};padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;'>{$typeLabel}</span>
+                <td class='cell center'>
+                    <span style='background:{$typeBg};color:{$typeColor};padding:4px 10px;border-radius:14px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;'>{$typeLabel}</span>
                 </td>
             </tr>";
+        }
+
+        if ($rows === '') {
+            $rows = '<tr><td colspan="6" class="empty-row">Tidak ada transaksi untuk filter ini.</td></tr>';
         }
 
         $creditModel = new \App\Models\CreditModel();
@@ -440,6 +445,13 @@ class MonetizationController extends BaseController
             .sum-box { background:white; border-radius:10px; padding:14px 20px; flex:1; min-width: 150px; border:1px solid #e2e8f0; }
             .sum-box label { display:block; font-size:10px; color:#94a3b8; font-weight:700; text-transform:uppercase; }
             .footer { padding:16px 36px; text-align:center; font-size:10px; color:#94a3b8; border-top:1px solid #f1f5f9; }
+            .cell { padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:10.5px; color:#334155; vertical-align:top; }
+            .muted { color:#64748b; width:36px; }
+            .desc { max-width:240px; line-height:1.45; }
+            .amount { text-align:right; white-space:nowrap; }
+            .center { text-align:center; }
+            tbody tr:nth-child(even) { background:#fbfdff; }
+            .empty-row { padding:24px; text-align:center; color:#64748b; border-bottom:1px solid #e5e7eb; }
         </style></head><body>
         <div class="header">
             <h1>Laporan Riwayat Transaksi</h1>
@@ -479,15 +491,29 @@ class MonetizationController extends BaseController
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->setPaper('A4', 'landscape');
         $dompdf->render();
+        $canvas = $dompdf->getCanvas();
+        $fontMetrics = $dompdf->getFontMetrics();
+        $footerFont = $fontMetrics->getFont('DejaVu Sans', 'normal');
+        $canvas->page_text(42, 570, 'NusaShare Creator Finance', $footerFont, 8, [100, 116, 139]);
+        $canvas->page_text(745, 570, 'Hal. {PAGE_NUM} / {PAGE_COUNT}', $footerFont, 8, [100, 116, 139]);
         $pdf = $dompdf->output();
 
         $filename = 'NusaShare_Laporan_' . $username . '_' . date('Ymd_His') . '.pdf';
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')
-            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setHeader('Content-Disposition', ($inline ? 'inline' : 'attachment') . '; filename="' . $filename . '"')
             ->setHeader('Content-Length', (string) strlen($pdf))
             ->setBody($pdf);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // GET /creator/monetization/report/print
+    // Opens the same filtered PDF report in the browser for printing.
+    // ─────────────────────────────────────────────────────────────────────────────
+    public function printReport()
+    {
+        return $this->exportPdf(true);
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

@@ -133,7 +133,7 @@
                     </div>
                     <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-[#4F46E5] font-bold overflow-hidden">
                         <?php if (!empty($profile['profile_image'])): ?>
-                            <img src="<?= base_url('image/profile/' . $profile['profile_image']) ?>" alt="Avatar" class="w-full h-full object-cover">
+                            <img src="<?= profile_url($profile['profile_image']) ?>" alt="Avatar" class="w-full h-full object-cover">
                         <?php else: ?>
                             <?= strtoupper(substr($user['username'], 0, 1)) ?>
                         <?php endif; ?>
@@ -180,7 +180,7 @@
                                             <div class="follow-meta flex flex-wrap items-center gap-3 mb-3">
                                                 <div class="w-6 h-6 rounded-full bg-slate-200 overflow-hidden">
                                                     <?php if (!empty($work['profile_image'])): ?>
-                                                        <img src="<?= base_url('image/profile/' . $work['profile_image']) ?>" alt="" class="w-full h-full object-cover">
+                                                        <img src="<?= profile_url($work['profile_image']) ?>" alt="" class="w-full h-full object-cover">
                                                     <?php else: ?>
                                                         <div class="w-full h-full flex items-center justify-center bg-indigo-100 text-indigo-600 text-[10px] font-bold">
                                                             <?= strtoupper(substr($work['creator_name'], 0, 1)) ?>
@@ -242,7 +242,7 @@
                                         <a href="<?= base_url('creator/' . $creator['followed_id']) ?>" class="flex items-center gap-3">
                                             <div class="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 group-hover:border-indigo-200 transition-all">
                                                 <?php if (!empty($creator['profile_image'])): ?>
-                                                    <img src="<?= base_url('image/profile/' . $creator['profile_image']) ?>" alt="" class="w-full h-full object-cover">
+                                                    <img src="<?= profile_url($creator['profile_image']) ?>" alt="" class="w-full h-full object-cover">
                                                 <?php else: ?>
                                                     <div class="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-600 font-bold text-sm">
                                                         <?= strtoupper(substr($creator['display_name'] ?? 'U', 0, 1)) ?>

@@ -24,6 +24,7 @@ class ExploreContentModel extends Model
         'is_paid',
         'price',
         'purchase_price',
+        'allow_downloads',
         'watermark_text',
         'timer_duration',
         'is_locked', 
@@ -55,6 +56,7 @@ class ExploreContentModel extends Model
                 'works.is_paid',
                 'works.price',
                 'works.purchase_price',
+                'works.allow_downloads',
                 'works.watermark_text',
                 'works.timer_duration',
                 'works.cover_url', // Assuming this field exists

@@ -32,6 +32,8 @@ class CartModel extends Model
                 'works.is_paid',
                 'works.price',
                 'works.purchase_price',
+                'works.allow_downloads',
+                'works.creator_id',
                 'works.status as work_status_pub',
                 'users.username as creator_name',
             ])
@@ -74,6 +76,7 @@ class CartModel extends Model
             ->select('SUM(CASE WHEN works.purchase_price > 0 THEN works.purchase_price ELSE works.price END) as total')
             ->join('works', 'works.id = cart_items.work_id')
             ->where('cart_items.user_id', $userId)
+            ->where('works.creator_id !=', $userId)
             ->where('works.is_paid', 1)
             ->get()
             ->getRowArray();

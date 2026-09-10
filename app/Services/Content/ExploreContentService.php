@@ -205,6 +205,7 @@ class ExploreContentService
             ->like('users.username', $query)
             ->orLike('creator_profiles.display_name', $query)
             ->orLike('user_profiles.display_name', $query)
+            ->orWhere('users.id', $query)
         ->groupEnd()
         ->limit(10)
         ->get()

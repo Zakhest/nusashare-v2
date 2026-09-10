@@ -53,6 +53,10 @@
         #detailModal.open #modalCard { transform: scale(1); }
         #detailModal.closed #modalCard { transform: scale(.95); }
 
+        #reportModal { transition: opacity .2s; }
+        #reportModal.open { opacity: 1; pointer-events: all; }
+        #reportModal.closed { opacity: 0; pointer-events: none; }
+
         /* Mobile transaction card */
         .tx-card {
             background: white;
@@ -119,11 +123,11 @@
                     <span class="material-symbols-outlined text-sm">table_view</span>
                     <span class="hidden sm:inline">Excel</span>
                 </a>
-                <a id="btnExportPdf" href="<?= base_url('creator/monetization/export/pdf') ?>"
+                <button id="btnExportPdf" type="button"
                    class="no-print flex items-center gap-1.5 px-3 py-2 bg-rose-600 text-white rounded-xl font-bold text-xs hover:bg-rose-700 transition-all">
                     <span class="material-symbols-outlined text-sm">picture_as_pdf</span>
                     <span class="hidden sm:inline">PDF</span>
-                </a>
+                </button>
                 <div class="hidden md:flex items-center gap-3 border-l pl-4 border-slate-100">
                     <div class="text-right">
                         <p class="text-xs font-bold text-slate-900"><?= $creatorProfile['display_name'] ?? $username ?></p>
@@ -449,6 +453,36 @@
         </div><!-- /body -->
     </main>
 
+    <div id="reportModal" class="closed fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm no-print">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div class="flex items-start justify-between gap-4 mb-5">
+                <div>
+                    <p class="text-base font-bold text-slate-900">Cetak laporan PDF</p>
+                    <p class="text-xs text-slate-400 mt-1">Pilih cakupan transaksi yang ingin dicetak.</p>
+                </div>
+                <button type="button" onclick="closeReportModal()" class="p-1 text-slate-400 hover:text-slate-700" title="Tutup">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <button type="button" onclick="printCurrentReport()" class="w-full flex items-center gap-3 text-left p-4 border border-slate-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-all">
+                    <span class="material-symbols-outlined text-indigo-600">print</span>
+                    <span><span class="block text-sm font-bold text-slate-800">Cetak saja</span><span class="block text-[11px] text-slate-400 mt-0.5">Cetak transaksi sesuai filter yang aktif.</span></span>
+                </button>
+
+                <div class="p-4 border border-slate-200 rounded-xl">
+                    <label for="reportMonth" class="block text-sm font-bold text-slate-800">Cetak periode per bulan</label>
+                    <input id="reportMonth" type="month" class="mt-3 w-full bg-slate-50 px-3 py-2 rounded-lg text-sm text-slate-700 border border-slate-200 focus:outline-none focus:border-indigo-400">
+                    <button type="button" onclick="printMonthlyReport()" class="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-600 text-white rounded-lg font-bold text-xs hover:bg-rose-700 transition-all">
+                        <span class="material-symbols-outlined text-sm">calendar_month</span>
+                        Cetak periode ini
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ══════════════════════════════════════════════
          DETAIL MODAL
     ══════════════════════════════════════════════ -->
@@ -556,12 +590,48 @@
         function updateExportLinks() {
             const params = new URLSearchParams(window.location.search);
             const base_excel = '<?= base_url('creator/monetization/export/excel') ?>';
-            const base_pdf   = '<?= base_url('creator/monetization/export/pdf') ?>';
             $('#btnExportExcel').attr('href', base_excel + (params.toString() ? '?' + params.toString() : ''));
-            $('#btnExportPdf').attr('href', base_pdf + (params.toString() ? '?' + params.toString() : ''));
         }
         updateExportLinks();
+
+        $('#btnExportPdf').on('click', function () {
+            openReportModal();
+        });
     });
+
+    function openReportModal() {
+        const activeMonth = new URLSearchParams(window.location.search).get('date_from') || '';
+        document.getElementById('reportMonth').value = activeMonth ? activeMonth.slice(0, 7) : new Date().toISOString().slice(0, 7);
+        document.getElementById('reportModal').classList.remove('closed');
+        document.getElementById('reportModal').classList.add('open');
+    }
+
+    function closeReportModal() {
+        document.getElementById('reportModal').classList.remove('open');
+        document.getElementById('reportModal').classList.add('closed');
+    }
+
+    function openPrintReport(params) {
+        const base = '<?= base_url('creator/monetization/report/print') ?>';
+        window.open(base + (params.toString() ? '?' + params.toString() : ''), '_blank', 'noopener');
+        closeReportModal();
+    }
+
+    function printCurrentReport() {
+        openPrintReport(new URLSearchParams(window.location.search));
+    }
+
+    function printMonthlyReport() {
+        const month = document.getElementById('reportMonth').value;
+        if (!month) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const [year, monthNumber] = month.split('-').map(Number);
+        const lastDay = new Date(year, monthNumber, 0).getDate();
+        params.set('date_from', month + '-01');
+        params.set('date_to', month + '-' + String(lastDay).padStart(2, '0'));
+        openPrintReport(params);
+    }
 
     // ─── Mobile card search filter ───────────────────────────────────────────────
     function filterMobileCards(q) {

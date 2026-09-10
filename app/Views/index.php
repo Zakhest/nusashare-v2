@@ -15,6 +15,18 @@
     <!-- Material Icons -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
     <link rel="icon" href="<?= base_url('assets/icon/logonus.png') ?>" type="image/x-icon">
+
+    <!-- PWA -->
+    <link rel="manifest" href="<?= base_url('manifest.json') ?>">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NusaShare">
+    <link rel="apple-touch-icon" href="/assets/pwa/icon-192.png">
+    <meta name="msapplication-TileImage" content="/assets/pwa/icon-144.png">
+    <meta name="msapplication-TileColor" content="#4F46E5">
+
     <style>
         :root {
             --lp-bg: #EEF2FF;
@@ -610,4 +622,5 @@
 
 
 
+<script src="<?= base_url('assets/js/pwa.js') ?>"></script>
 </body></html>

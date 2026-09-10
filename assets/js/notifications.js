@@ -4,8 +4,11 @@
  * Fitur:
  * 1. Dropdown notifikasi (AJAX, buka via klik lonceng)
  * 2. Badge unread count real-time
- * 3. Toast pop-up otomatis saat notifikasi baru tiba (polling 15 detik)
+ * 3. Toast pop-up otomatis saat notifikasi baru tiba
  * 4. Mark as read per item atau semua sekaligus
+ * 5. Background Sync integration (dari Service Worker via pwa.js)
+ *    → Saat SW selesai sync, event 'nusa:notif-sync' di-dispatch ke window
+ *    → Polling 15s tetap aktif sebagai fallback jika BG Sync tidak tersedia
  */
 document.addEventListener('DOMContentLoaded', () => {
     // ─── Base URL ───────────────────────────────────────────────
@@ -20,6 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const seenIds = new Set();
     /** Apakah ini fetch pertama (jangan toast saat baru load halaman) */
     let isFirstFetch = true;
+    /** Apakah Background Sync tersedia */
+    const hasBgSync = 'serviceWorker' in navigator && 'SyncManager' in window;
 
     // ─── Widget containers ──────────────────────────────────────
     const containers = Array.from(
@@ -398,8 +403,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ════════════════════════════════════════════════════════════
-    // POLLING — setiap 15 detik, silent (tidak re-render list)
+    // POLLING & BACKGROUND SYNC
     // ════════════════════════════════════════════════════════════
-    fetchNotifications(false); // fetch pertama (isFirstFetch=true → tidak toast)
-    setInterval(() => fetchNotifications(true), 15000);
+
+    // ── Background Sync listener: terima data dari Service Worker ──
+    // pwa.js mem-broadcast event ini saat SW selesai sync notifikasi
+    window.addEventListener('nusa:notif-sync', (e) => {
+        const data = e.detail;
+        if (!data) return;
+
+        const newCount  = parseInt(data.unread_count ?? 0, 10);
+        const newNotifs = data.notifications ?? [];
+
+        // Deteksi notif baru untuk toast
+        if (!isFirstFetch) {
+            newNotifs.forEach(n => {
+                const id = String(n.id);
+                if (parseInt(n.is_read, 10) === 0 && !seenIds.has(id)) {
+                    showToast(n);
+                }
+            });
+        }
+
+        newNotifs.forEach(n => seenIds.add(String(n.id)));
+        isFirstFetch = false;
+        sharedUnreadCount   = newCount;
+        sharedNotifications = newNotifs;
+        updateBadges(newCount);
+    });
+
+    // ── Fetch pertama saat halaman load ──────────────────────────
+    fetchNotifications(false);
+
+    // ── Polling fallback: aktif jika Background Sync tidak tersedia ──
+    // Jika BG Sync tersedia, polling tetap berjalan tapi lebih jarang (60s)
+    // agar data tetap fresh saat tab aktif
+    const pollInterval = hasBgSync ? 60000 : 15000;
+    setInterval(() => fetchNotifications(true), pollInterval);
+
+    // ── Trigger Background Sync setiap kali halaman mendapat fokus ──
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && 'serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+                if ('SyncManager' in window) {
+                    reg.sync.register('sync-notifications').catch(() => {});
+                }
+            });
+        }
+    });
 });

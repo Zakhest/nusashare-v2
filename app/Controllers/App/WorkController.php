@@ -14,6 +14,9 @@ use App\Models\ReadingHistoryModel;
 use App\Models\UnlockedChapterModel;
 use App\Models\BookmarkModel;
 use App\Services\NotificationService;
+use Dompdf\Dompdf;
+use Dompdf\Options;
+use App\Models\TransactionModel;
 
 class WorkController extends BaseController
 {
@@ -65,6 +68,8 @@ class WorkController extends BaseController
             'hasLiked'      => false,
             'hasBookmarked' => false,
             'comments'      => $this->commentModel->getByWork($id),
+            'inCart'        => false,
+            'hasPurchased'  => false,
         ];
 
         // Jika belum login, simpan URL ini agar setelah login bisa kembali ke sini
@@ -85,6 +90,17 @@ class WorkController extends BaseController
             $data['hasLiked']      = $this->likeModel->hasLiked($userId, $id);
             $data['lastRead']      = $this->readingHistoryModel->getLastRead($userId, (int)$id);
             $data['hasBookmarked'] = $bookmarkModel->where('user_id', $userId)->where('work_id', $id)->countAllResults() > 0;
+            
+            $cartModel             = new \App\Models\CartModel();
+            $data['inCart']        = $cartModel->inCart($userId, (int)$id);
+
+            $transactionModel      = new TransactionModel();
+            $data['hasPurchased']  = $transactionModel
+                ->where('user_id', $userId)
+                ->where('reference_id', $id)
+                ->where('category', 'download')
+                ->where('type', 'out')
+                ->countAllResults() > 0;
         }
 
         // Fetch content based on type
@@ -118,59 +134,43 @@ class WorkController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound("Karya tidak ditemukan.");
         }
 
-        if ($work['content_type'] !== 'image') {
-            return redirect()->back()->with('error', 'Hanya karya gambar yang dapat diunduh.');
+        $downloadable = ['image', 'text', 'novel', 'light_novel', 'comic'];
+        if (!in_array($work['content_type'], $downloadable)) {
+            return redirect()->back()->with('error', 'Tipe karya ini tidak dapat diunduh.');
         }
 
-        if ($work['is_paid']) {
-            return redirect()->back()->with('error', 'Karya berbayar tidak bisa diunduh secara gratis saat ini.');
+        if ((int)($work['allow_downloads'] ?? 1) !== 1) {
+            return redirect()->back()->with('error', 'Kreator menonaktifkan unduhan untuk karya ini.');
         }
 
-        $images = $this->imageModel->getByWork($id);
-        
-        if (empty($images)) {
-            return redirect()->back()->with('error', 'Tidak ada gambar yang bisa diunduh.');
-        }
+        $userId = session()->get('userId');
+        $isOwner = $userId && ((string)$work['creator_id'] === (string)$userId);
 
-        $zip = new \ZipArchive();
-        $zipName = "NusaShare_" . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $work['title']) . ".zip";
-        $zipDir = WRITEPATH . 'uploads/';
-        if (!is_dir($zipDir)) {
-            mkdir($zipDir, 0777, true);
-        }
-        $zipPath = $zipDir . $zipName;
-
-        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
-            foreach ($images as $index => $img) {
-                $path = $img['file_path'];
-                if (filter_var($path, FILTER_VALIDATE_URL)) {
-                    try {
-                        $client = \Config\Services::curlrequest();
-                        $response = $client->get($path, ['timeout' => 10, 'http_errors' => false, 'verify' => false]);
-                        if ($response->getStatusCode() === 200) {
-                            $content = $response->getBody();
-                            $zip->addFromString("image_" . ($index + 1) . ".jpg", $content);
-                        }
-                    } catch (\Exception $e) {
-                        // skip
-                    }
-                } else {
-                    $decodedPath = rawurldecode($path);
-                    $fullPath = ROOTPATH . 'public/' . $decodedPath;
-                    if (file_exists($fullPath)) {
-                        $ext = pathinfo($fullPath, PATHINFO_EXTENSION) ?: 'jpg';
-                        $zip->addFile($fullPath, "image_" . ($index + 1) . "." . $ext);
-                    }
-                }
+        if ($work['is_paid'] && !$isOwner) {
+            if (!$userId) {
+                return redirect()->to(base_url('login'))->with('error', 'Silakan login terlebih dahulu untuk mengunduh karya berbayar.');
             }
-            $zip->close();
+            $transactionModel = new TransactionModel();
+            $hasPurchased = $transactionModel
+                ->where('user_id', $userId)
+                ->where('reference_id', $id)
+                ->where('category', 'download')
+                ->where('type', 'out')
+                ->countAllResults() > 0;
 
-            if (file_exists($zipPath)) {
-                return $this->response->download($zipPath, null)->setFileName($zipName);
+            if (!$hasPurchased) {
+                return redirect()->back()->with('error', 'Akses ditolak. Silakan lakukan checkout terlebih dahulu.');
             }
         }
-        
-        return redirect()->back()->with('error', 'Gagal membuat file unduhan.');
+
+        // Lepas session lock sebelum proses file berat
+        session()->close();
+
+        if ($work['content_type'] === 'image') {
+            return $this->_downloadImagesAsZip($work, (string)($userId ?? ''));
+        } else {
+            return $this->_downloadChaptersAsPdf($work, (string)($userId ?? ''));
+        }
     }
 
     /**
@@ -559,5 +559,268 @@ class WorkController extends BaseController
     private function viewCountedKey(int $workId): string
     {
         return 'view_counted_work_' . $workId;
+    }
+
+    private function _downloadImagesAsZip(array $work, string $buyerUserId = '')
+    {
+        $images = $this->imageModel->getByWork($work['id']);
+
+        if (empty($images)) {
+            return redirect()->back()->with('error', 'Tidak ada gambar yang bisa diunduh.');
+        }
+
+        $zip     = new \ZipArchive();
+        $zipName = 'NusaShare_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $work['title']) . '.zip';
+        $zipDir  = WRITEPATH . 'downloads/';
+        if (!is_dir($zipDir)) mkdir($zipDir, 0777, true);
+        $zipPath = $zipDir . $zipName;
+        $password = $this->getDownloadPassword($buyerUserId);
+
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            $zip->setPassword($password);
+            $encryptionFailed = false;
+
+            foreach ($images as $index => $img) {
+                $path = $img['file_path'];
+                if (filter_var($path, FILTER_VALIDATE_URL)) {
+                    try {
+                        $client   = \Config\Services::curlrequest();
+                        $response = $client->get($path, ['timeout' => 10, 'http_errors' => false, 'verify' => false]);
+                        if ($response->getStatusCode() === 200) {
+                            $entryName = 'image_' . ($index + 1) . '.jpg';
+                            $zip->addFromString($entryName, $response->getBody());
+                            $encryptionFailed = !$this->protectZipEntry($zip, $entryName) || $encryptionFailed;
+                        }
+                    } catch (\Exception $e) { /* skip */ }
+                } else {
+                    $fullPath = ROOTPATH . 'public/' . rawurldecode($path);
+                    if (file_exists($fullPath)) {
+                        $ext = pathinfo($fullPath, PATHINFO_EXTENSION) ?: 'jpg';
+                        $entryName = 'image_' . ($index + 1) . '.' . $ext;
+                        $zip->addFile($fullPath, $entryName);
+                        $encryptionFailed = !$this->protectZipEntry($zip, $entryName) || $encryptionFailed;
+                    }
+                }
+            }
+            $zip->close();
+
+            if ($encryptionFailed) {
+                @unlink($zipPath);
+                return redirect()->back()->with('error', 'Gagal memberi password pada file ZIP. Pastikan ekstensi ZIP server mendukung enkripsi.');
+            }
+
+            if (file_exists($zipPath)) {
+                return $this->response->download($zipPath, null)->setFileName($zipName);
+            }
+        }
+
+        return redirect()->back()->with('error', 'Gagal membuat file ZIP.');
+    }
+
+    private function getDownloadPassword(string $buyerUserId): string
+    {
+        return $buyerUserId !== '' ? $buyerUserId : 'NusaShare';
+    }
+
+    private function protectZipEntry(\ZipArchive $zip, string $entryName): bool
+    {
+        if (!method_exists($zip, 'setEncryptionName')) {
+            return false;
+        }
+
+        $method = defined('\ZipArchive::EM_AES_256')
+            ? \ZipArchive::EM_AES_256
+            : \ZipArchive::EM_TRAD_PKWARE;
+
+        return $zip->setEncryptionName($entryName, $method);
+    }
+
+    private function protectDompdf(Dompdf $dompdf, string $password): void
+    {
+        $canvas = $dompdf->getCanvas();
+        if (method_exists($canvas, 'get_cpdf')) {
+            $ownerPassword = hash('sha256', $password . '|NusaShare|owner');
+            $canvas->get_cpdf()->setEncryption($password, $ownerPassword, ['print']);
+        }
+    }
+
+    private function _downloadChaptersAsPdf(array $work, string $buyerUserId = '')
+    {
+        $chapters = $this->chapterModel->getByWork($work['id']);
+
+        if (empty($chapters)) {
+            return redirect()->back()->with('error', 'Tidak ada bab yang tersedia untuk diunduh.');
+        }
+
+        // Ambil info pembeli dari database agar pasti valid
+        $userModel     = new UserModel();
+        $buyerUser     = ($buyerUserId !== '') ? $userModel->find($buyerUserId) : null;
+        $buyerUsername = $buyerUser ? '@' . $buyerUser['username'] : 'Tamu';
+
+        // Build HTML konten
+        $footerTitle = preg_replace('/\s+/', ' ', strip_tags((string)$work['title']));
+        $title       = htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8');
+        $creator     = htmlspecialchars($work['creator_name'], ENT_QUOTES, 'UTF-8');
+        $buyerName   = htmlspecialchars((string)$buyerUsername, ENT_QUOTES, 'UTF-8');
+        $buyerId     = htmlspecialchars((string)$buyerUserId, ENT_QUOTES, 'UTF-8');
+        $generatedAt = date('d M Y, H:i') . ' WIB';
+        $chapterTotal = count($chapters);
+        $typeMap = [
+            'novel'       => 'Novel',
+            'light_novel' => 'Light Novel',
+            'comic'       => 'Comic',
+            'text'        => 'Teks',
+        ];
+        $typeLabel = $typeMap[$work['content_type']] ?? ucfirst($work['content_type']);
+
+        $html  = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
+        $html .= '<style>';
+        $html .= '@page{margin:22mm 20mm 24mm;}';
+        $html .= 'body{font-family:"DejaVu Sans",Arial,sans-serif;color:#172033;margin:0;padding:0;font-size:11.2pt;line-height:1.72;background:#fff;}';
+        $html .= '.cover{height:297mm;margin:-22mm -20mm -24mm;background:#f8fafc;color:#0f172a;page-break-after:always;position:relative;overflow:hidden;}';
+        $html .= '.cover-top{height:9mm;background:#111827;}';
+        $html .= '.cover-mark{position:absolute;right:-34mm;top:22mm;width:118mm;height:118mm;border-radius:80mm;background:#4f46e5;opacity:.11;}';
+        $html .= '.cover-mark.two{right:122mm;top:218mm;width:70mm;height:70mm;background:#f59e0b;opacity:.18;}';
+        $html .= '.cover-inner{padding:34mm 26mm 0;}';
+        $html .= '.brand-row{font-size:9pt;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#4f46e5;margin-bottom:42mm;}';
+        $html .= '.type-pill{display:inline-block;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;border-radius:18px;padding:6px 13px;font-size:8pt;font-weight:800;letter-spacing:2px;text-transform:uppercase;}';
+        $html .= '.cover h1{font-family:Georgia,"DejaVu Serif",serif;font-size:35pt;font-weight:700;line-height:1.12;margin:18px 0 14px;color:#0f172a;}';
+        $html .= '.cover .by{font-size:13pt;color:#475569;margin:0 0 26mm;}';
+        $html .= '.cover .by strong{color:#111827;}';
+        $html .= '.meta-grid{width:100%;border-collapse:separate;border-spacing:0 9px;margin-top:10mm;}';
+        $html .= '.meta-grid td{background:#fff;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;padding:11px 14px;font-size:9.2pt;}';
+        $html .= '.meta-grid td:first-child{border-left:4px solid #4f46e5;border-radius:7px 0 0 7px;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:1.4px;width:38%;}';
+        $html .= '.meta-grid td:last-child{border-right:1px solid #e5e7eb;border-radius:0 7px 7px 0;color:#111827;font-weight:700;}';
+        $html .= '.ownership{position:absolute;left:26mm;right:26mm;bottom:28mm;border-top:1px solid #dbe3ef;padding-top:9mm;color:#475569;font-size:8.8pt;line-height:1.55;}';
+        $html .= '.ownership strong{color:#111827;}';
+        $html .= '.page-break{page-break-before:always;}';
+        $html .= '.chapter{padding:0;}';
+        $html .= '.chapter-kicker{font-size:8.5pt;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#4f46e5;margin:0 0 8px;}';
+        $html .= '.chapter h2{font-family:Georgia,"DejaVu Serif",serif;font-size:23pt;font-weight:700;line-height:1.2;margin:0 0 24px;color:#111827;border-bottom:1px solid #dbe3ef;padding-bottom:14px;}';
+        $html .= '.chapter p{font-family:Georgia,"DejaVu Serif",serif;text-indent:1.8em;margin:0 0 12px;color:#1f2937;}';
+        $html .= '.chapter p:first-of-type{text-indent:0;}';
+        $html .= '.empty-note{font-style:italic;color:#64748b;background:#f8fafc;border-left:4px solid #cbd5e1;padding:12px 14px;text-indent:0;}';
+        $html .= '.comic-page{page-break-inside:avoid;margin:0 0 18px;text-align:center;background:#f8fafc;border:1px solid #e5e7eb;padding:8px;}';
+        $html .= '.comic-page img{max-width:100%;height:auto;display:block;margin:0 auto;}';
+        $html .= '</style></head><body>';
+
+        // Cover page
+        $html .= '<div class="cover">';
+        $html .= '<div class="cover-top"></div><div class="cover-mark"></div><div class="cover-mark two"></div>';
+        $html .= '<div class="cover-inner">';
+        $html .= '<div class="brand-row">NusaShare</div>';
+        $html .= '<div class="type-pill">' . $typeLabel . '</div>';
+        $html .= '<h1>' . $title . '</h1>';
+        $html .= '<div class="by">oleh <strong>' . $creator . '</strong></div>';
+        $html .= '<table class="meta-grid">';
+        $html .= '<tr><td>Format</td><td>' . $typeLabel . '</td></tr>';
+        $html .= '<tr><td>Jumlah bab</td><td>' . number_format($chapterTotal) . '</td></tr>';
+        $html .= '<tr><td>Dicetak</td><td>' . htmlspecialchars($generatedAt, ENT_QUOTES, 'UTF-8') . '</td></tr>';
+        $html .= '<tr><td>Pemilik</td><td>' . $buyerName . '</td></tr>';
+        $html .= '</table>';
+        $html .= '</div>';
+        $html .= '<div class="ownership"><strong>Dokumen kepemilikan digital.</strong><br>File ini dibuat untuk akun ' . $buyerName . ($buyerId !== '' ? ' dengan User ID ' . $buyerId : '') . '. Mohon tidak mendistribusikan ulang tanpa izin kreator.</div>';
+        $html .= '</div>';
+
+        // Chapters
+        foreach ($chapters as $i => $chapter) {
+            $chapterClass = $i === 0 ? 'chapter' : 'chapter page-break';
+            $html .= '<div class="' . $chapterClass . '">';
+            $html .= '<div class="chapter-kicker">Bab ' . ($chapter['order_num'] ?? ($i + 1)) . '</div>';
+            $html .= '<h2>' . htmlspecialchars($chapter['title'], ENT_QUOTES, 'UTF-8') . '</h2>';
+            if ($work['content_type'] === 'comic') {
+                $html .= $this->renderComicChapterForPdf($chapter['body'] ?? '');
+            } elseif (!empty($chapter['body'])) {
+                $body = $this->normalizeChapterBodyForPdf($chapter['body']);
+                $paragraphs = preg_split('/\r?\n\r?\n/', trim($body));
+
+                foreach ($paragraphs as $p) {
+                    $p = trim($p);
+                    if ($p === '') {
+                        continue;
+                    }
+
+                    $html .= '<p>' . nl2br(htmlspecialchars($p)) . '</p>';
+                }
+            } else {
+                $html .= '<p class="empty-note">Konten bab ini tidak tersedia.</p>';
+            }
+            $html .= '</div>';
+        }
+
+        $html .= '</body></html>';
+
+        // Render HTML bab menjadi PDF asli sebelum dikirim ke browser.
+        $fileName = 'NusaShare_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $work['title']) . '.pdf';
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('defaultFont', 'DejaVu Sans');
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+        $canvas = $dompdf->getCanvas();
+        $fontMetrics = $dompdf->getFontMetrics();
+        $footerFont = $fontMetrics->getFont('DejaVu Sans', 'normal');
+        $canvas->page_text(42, 810, 'NusaShare - ' . $footerTitle, $footerFont, 8, [108, 117, 125]);
+        $canvas->page_text(512, 810, 'Hal. {PAGE_NUM} / {PAGE_COUNT}', $footerFont, 8, [108, 117, 125]);
+        $this->protectDompdf($dompdf, $this->getDownloadPassword($buyerUserId));
+
+        $pdf = $dompdf->output();
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $fileName . '"')
+            ->setHeader('Content-Length', (string) strlen($pdf))
+            ->setBody($pdf);
+    }
+
+    private function renderComicChapterForPdf(string $body): string
+    {
+        $images = json_decode($body, true);
+        if (!is_array($images) || empty($images)) {
+            return '<p><em>Tidak ada gambar dalam bab ini.</em></p>';
+        }
+
+        $html = '';
+        foreach ($images as $image) {
+            $src = $this->resolveChapterImageUrl((string)$image);
+            $html .= '<div class="comic-page"><img src="' . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') . '" alt="Halaman komik"></div>';
+        }
+
+        return $html;
+    }
+
+    private function resolveChapterImageUrl(string $path): string
+    {
+        if (filter_var($path, FILTER_VALIDATE_URL)) {
+            return $path;
+        }
+
+        if (strpos($path, 'chapters/') === 0) {
+            $parts = explode('/', $path);
+            $workId = $parts[1] ?? 0;
+            $file = $parts[2] ?? basename($path);
+
+            return base_url('image/chapter/' . $workId . '/' . $file);
+        }
+
+        return base_url($path);
+    }
+
+    private function normalizeChapterBodyForPdf(string $body): string
+    {
+        $body = html_entity_decode($body, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $body = preg_replace('/<\s*br\s*\/?\s*>/i', "\n", $body);
+        $body = preg_replace('/<\s*\/\s*p\s*>\s*<\s*p[^>]*>/i', "\n\n", $body);
+        $body = preg_replace('/<\s*p[^>]*>/i', '', $body);
+        $body = preg_replace('/<\s*\/\s*p\s*>/i', "\n\n", $body);
+        $body = strip_tags($body);
+        $body = preg_replace("/[ \t]+\r?\n/", "\n", $body);
+        $body = preg_replace("/\n{3,}/", "\n\n", $body);
+
+        return trim($body);
     }
 }

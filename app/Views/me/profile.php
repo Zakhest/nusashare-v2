@@ -116,7 +116,7 @@
                         </div>
                         <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-[#4F46E5] font-bold overflow-hidden">
                                     <?php if (!empty($profile['profile_image'])): ?>
-                                        <img src="<?= base_url('image/profile/' . $profile['profile_image']) ?>" alt="Avatar" class="w-full h-full object-cover">
+                                        <img src="<?= profile_url($profile['profile_image']) ?>" alt="Avatar" class="w-full h-full object-cover">
                             <?php else: ?>
                                 <?= strtoupper(substr($username, 0, 1)) ?>
                             <?php endif; ?>
@@ -161,7 +161,7 @@
                             <div class="flex flex-col items-center gap-4">
                                 <div id="avatarPreviewContainer" class="w-32 h-32 rounded-full bg-indigo-100 flex items-center justify-center text-[#4F46E5] text-5xl font-bold border-4 border-white shadow-xl overflow-hidden">
                                     <?php if (!empty($profile['profile_image'])): ?>
-                                        <img src="<?= base_url('image/profile/' . $profile['profile_image']) ?>" alt="Avatar" class="w-full h-full object-cover">
+                                        <img src="<?= profile_url($profile['profile_image']) ?>" alt="Avatar" class="w-full h-full object-cover">
                                     <?php else: ?>
                                         <?= strtoupper(substr($username, 0, 1)) ?>
                                     <?php endif; ?>

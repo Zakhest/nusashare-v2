@@ -10,6 +10,7 @@ use App\Models\WorkImageModel;
 use App\Models\CreditModel;
 use App\Models\TransactionModel;
 use App\Models\UserModel;
+use App\Models\UserProfileModel;
 use App\Models\CreatorProfileModel;
 use App\Services\NotificationService;
 use Dompdf\Dompdf;
@@ -34,9 +35,10 @@ class CartController extends BaseController
         $userId = session()->get('userId');
         if (!$userId) return redirect()->to('login');
 
-        $userModel          = new UserModel();
+        $userModel           = new UserModel();
+        $userProfileModel    = new UserProfileModel();
         $creatorProfileModel = new CreatorProfileModel();
-        $creditModel        = new CreditModel();
+        $creditModel         = new CreditModel();
 
         $cartItems  = $this->cartModel->getCartWithWorks($userId);
         $userCredit = $creditModel->find($userId);
@@ -45,7 +47,7 @@ class CartController extends BaseController
         // Hitung total harga karya berbayar
         $totalPrice = 0;
         foreach ($cartItems as $item) {
-            if ($item['is_paid']) {
+            if ($item['is_paid'] && !$this->isOwnCartItem($item, $userId)) {
                 $totalPrice += $this->getPurchasePrice($item);
             }
         }
@@ -53,17 +55,23 @@ class CartController extends BaseController
         // Ambil session download yang baru saja di-checkout
         $downloadReady = session()->getFlashdata('cart_downloads') ?? [];
 
+        $userProfile = $userProfileModel->find($userId);
+
         $data = [
-            'cartItems'     => $cartItems,
-            'totalPrice'    => $totalPrice,
-            'balance'       => $balance,
-            'shortfall'     => max(0, $totalPrice - $balance),
-            'downloadReady' => $downloadReady,
-            'user'          => $userModel->find($userId),
-            'username'      => session()->get('username'),
+            'cartItems'      => $cartItems,
+            'totalPrice'     => $totalPrice,
+            'balance'        => $balance,
+            'shortfall'      => max(0, $totalPrice - $balance),
+            'downloadReady'  => $downloadReady,
+            'user'           => $userModel->find($userId),
+            'username'       => session()->get('username'),
+            'profile'        => [
+                'profile_image' => $userProfile['profile_image'] ?? null,
+                'display_name'  => $userProfile['display_name'] ?? session()->get('username'),
+            ],
             'creatorProfile' => $creatorProfileModel->find($userId),
-            'isLoggedIn'    => true,
-            'activePage'    => 'cart',
+            'isLoggedIn'     => true,
+            'activePage'     => 'cart',
         ];
 
         return view('me/cart', $data);
@@ -88,6 +96,10 @@ class CartController extends BaseController
         $downloadable = ['image', 'text', 'novel', 'light_novel', 'comic'];
         if (!in_array($work['content_type'], $downloadable)) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'Tipe karya ini tidak bisa diunduh.']);
+        }
+
+        if ((int)($work['allow_downloads'] ?? 1) !== 1) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Kreator menonaktifkan unduhan untuk karya ini.']);
         }
 
         if ($this->cartModel->inCart($userId, $workId)) {
@@ -143,6 +155,12 @@ class CartController extends BaseController
             return redirect()->to('me/cart')->with('error', 'Keranjang Anda kosong.');
         }
 
+        foreach ($cartItems as $item) {
+            if ((int)($item['allow_downloads'] ?? 1) !== 1) {
+                return redirect()->to('me/cart')->with('error', 'Sebagian karya di keranjang sudah tidak diizinkan untuk diunduh oleh kreator.');
+            }
+        }
+
         $creditModel      = new CreditModel();
         $transactionModel = new TransactionModel();
 
@@ -152,7 +170,7 @@ class CartController extends BaseController
         // Hitung total karya berbayar
         $totalPrice = 0;
         foreach ($cartItems as $item) {
-            if ($item['is_paid']) $totalPrice += $this->getPurchasePrice($item);
+            if ($item['is_paid'] && !$this->isOwnCartItem($item, $userId)) $totalPrice += $this->getPurchasePrice($item);
         }
 
         if ($balance < $totalPrice) {
@@ -167,6 +185,7 @@ class CartController extends BaseController
 
         foreach ($cartItems as $item) {
             if (!$item['is_paid']) continue;
+            if ($this->isOwnCartItem($item, $userId)) continue;
 
             $price = $this->getPurchasePrice($item);
             $newBalance -= $price;
@@ -217,6 +236,7 @@ class CartController extends BaseController
         $buyerUsername = $_buyerUser['username'] ?? $userId;
         foreach ($cartItems as $item) {
             if (!$item['is_paid']) continue;
+            if ($this->isOwnCartItem($item, $userId)) continue;
             $work = $this->contentModel->find($item['work_id']);
             if ($work && $work['creator_id'] !== $userId) {
                 $notifService->notifyPurchase(
@@ -261,6 +281,9 @@ class CartController extends BaseController
         foreach ($workIds as $wid) {
             $work = $this->contentModel->findById((int)$wid);
             if ($work) {
+                if ((int)($work['allow_downloads'] ?? 1) !== 1) {
+                    continue;
+                }
                 $t = $work['content_type'];
                 $items[] = [
                     'id'          => $wid,
@@ -306,8 +329,14 @@ class CartController extends BaseController
             return redirect()->to('me/cart')->with('error', 'Tipe karya ini tidak dapat diunduh.');
         }
 
+        if ((int)($work['allow_downloads'] ?? 1) !== 1) {
+            return redirect()->to('me/cart')->with('error', 'Kreator menonaktifkan unduhan untuk karya ini.');
+        }
+
+        $isOwner = ((string)($work['creator_id'] ?? '') === (string)$userId);
+
         // Untuk karya berbayar: validasi dari riwayat transaksi
-        if ($work['is_paid']) {
+        if ($work['is_paid'] && !$isOwner) {
             $transactionModel = new TransactionModel();
             $hasPurchased = $transactionModel
                 ->where('user_id', $userId)
@@ -328,14 +357,14 @@ class CartController extends BaseController
         session()->close();
 
         if ($work['content_type'] === 'image') {
-            return $this->_downloadImagesAsZip($work);
+            return $this->_downloadImagesAsZip($work, $userId);
         } else {
             return $this->_downloadChaptersAsPdf($work, $userId);
         }
     }
 
     // ─── Private: ZIP untuk karya gambar ─────────
-    private function _downloadImagesAsZip(array $work)
+    private function _downloadImagesAsZip(array $work, string $buyerUserId = '')
     {
         $imageModel = new WorkImageModel();
         $images     = $imageModel->getByWork($work['id']);
@@ -349,8 +378,12 @@ class CartController extends BaseController
         $zipDir  = WRITEPATH . 'downloads/';
         if (!is_dir($zipDir)) mkdir($zipDir, 0777, true);
         $zipPath = $zipDir . $zipName;
+        $password = $this->getDownloadPassword($buyerUserId);
 
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            $zip->setPassword($password);
+            $encryptionFailed = false;
+
             foreach ($images as $index => $img) {
                 $path = $img['file_path'];
                 if (filter_var($path, FILTER_VALIDATE_URL)) {
@@ -358,18 +391,27 @@ class CartController extends BaseController
                         $client   = \Config\Services::curlrequest();
                         $response = $client->get($path, ['timeout' => 10, 'http_errors' => false, 'verify' => false]);
                         if ($response->getStatusCode() === 200) {
-                            $zip->addFromString('image_' . ($index + 1) . '.jpg', $response->getBody());
+                            $entryName = 'image_' . ($index + 1) . '.jpg';
+                            $zip->addFromString($entryName, $response->getBody());
+                            $encryptionFailed = !$this->protectZipEntry($zip, $entryName) || $encryptionFailed;
                         }
                     } catch (\Exception $e) { /* skip */ }
                 } else {
                     $fullPath = ROOTPATH . 'public/' . rawurldecode($path);
                     if (file_exists($fullPath)) {
                         $ext = pathinfo($fullPath, PATHINFO_EXTENSION) ?: 'jpg';
-                        $zip->addFile($fullPath, 'image_' . ($index + 1) . '.' . $ext);
+                        $entryName = 'image_' . ($index + 1) . '.' . $ext;
+                        $zip->addFile($fullPath, $entryName);
+                        $encryptionFailed = !$this->protectZipEntry($zip, $entryName) || $encryptionFailed;
                     }
                 }
             }
             $zip->close();
+
+            if ($encryptionFailed) {
+                @unlink($zipPath);
+                return redirect()->to('me/cart')->with('error', 'Gagal memberi password pada file ZIP. Pastikan ekstensi ZIP server mendukung enkripsi.');
+            }
 
             if (file_exists($zipPath)) {
                 return $this->response->download($zipPath, null)->setFileName($zipName);
@@ -379,12 +421,44 @@ class CartController extends BaseController
         return redirect()->to('me/cart')->with('error', 'Gagal membuat file ZIP.');
     }
 
+    private function getDownloadPassword(string $buyerUserId): string
+    {
+        return $buyerUserId !== '' ? $buyerUserId : 'NusaShare';
+    }
+
+    private function protectZipEntry(\ZipArchive $zip, string $entryName): bool
+    {
+        if (!method_exists($zip, 'setEncryptionName')) {
+            return false;
+        }
+
+        $method = defined('\ZipArchive::EM_AES_256')
+            ? \ZipArchive::EM_AES_256
+            : \ZipArchive::EM_TRAD_PKWARE;
+
+        return $zip->setEncryptionName($entryName, $method);
+    }
+
+    private function protectDompdf(Dompdf $dompdf, string $password): void
+    {
+        $canvas = $dompdf->getCanvas();
+        if (method_exists($canvas, 'get_cpdf')) {
+            $ownerPassword = hash('sha256', $password . '|NusaShare|owner');
+            $canvas->get_cpdf()->setEncryption($password, $ownerPassword, ['print']);
+        }
+    }
+
     // ─── Private: PDF untuk karya teks/novel ─────
     private function getPurchasePrice(array $item): int
     {
         $purchasePrice = (int)($item['purchase_price'] ?? 0);
 
         return $purchasePrice > 0 ? $purchasePrice : (int)($item['price'] ?? 0);
+    }
+
+    private function isOwnCartItem(array $item, string $userId): bool
+    {
+        return (string)($item['creator_id'] ?? '') === (string)$userId;
     }
 
     private function _downloadChaptersAsPdf(array $work, string $buyerUserId = '')
@@ -402,8 +476,13 @@ class CartController extends BaseController
         $buyerUsername = $buyerUser['username'] ?? $buyerUserId;
 
         // Build HTML konten
-        $title   = htmlspecialchars($work['title']);
-        $creator = htmlspecialchars($work['creator_name']);
+        $footerTitle = preg_replace('/\s+/', ' ', strip_tags((string)$work['title']));
+        $title       = htmlspecialchars($work['title'], ENT_QUOTES, 'UTF-8');
+        $creator     = htmlspecialchars($work['creator_name'], ENT_QUOTES, 'UTF-8');
+        $buyerName   = htmlspecialchars((string)$buyerUsername, ENT_QUOTES, 'UTF-8');
+        $buyerId     = htmlspecialchars((string)$buyerUserId, ENT_QUOTES, 'UTF-8');
+        $generatedAt = date('d M Y, H:i') . ' WIB';
+        $chapterTotal = count($chapters);
         $typeMap = [
             'novel'       => 'Novel',
             'light_novel' => 'Light Novel',
@@ -414,49 +493,59 @@ class CartController extends BaseController
 
         $html  = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
         $html .= '<style>';
-        $html .= '@page{margin:0;}';
-        $html .= 'body{font-family:"DejaVu Sans",Georgia,serif;color:#1a1a1a;margin:0;padding:0;font-size:13pt;line-height:1.8;}';
-        $html .= '.cover{height:297mm;background:#4F46E5;color:white;text-align:center;page-break-after:always;}';
-        $html .= '.cover-inner{padding:95mm 28mm 0;}';
-        $html .= '.cover h1{font-size:38pt;font-weight:900;line-height:1.15;margin:0 0 18px;}';
-        $html .= '.cover .type{font-size:10pt;letter-spacing:4px;text-transform:uppercase;opacity:.75;margin-bottom:14px;}';
-        $html .= '.cover .by-label{font-size:10pt;letter-spacing:2px;text-transform:uppercase;opacity:.65;margin-top:26px;}';
-        $html .= '.cover .by{font-size:18pt;font-weight:700;margin-top:6px;}';
-        $html .= '.cover .brand{position:absolute;bottom:24mm;left:0;right:0;font-size:9pt;opacity:.65;letter-spacing:2px;text-align:center;}';
-        $html .= '.cover .buyer-info{margin-top:36px;padding:14px 20px;background:rgba(255,255,255,0.12);border-radius:8px;display:inline-block;}';
-        $html .= '.cover .buyer-info .buyer-label{font-size:8pt;letter-spacing:3px;text-transform:uppercase;opacity:.7;margin-bottom:6px;}';
-        $html .= '.cover .buyer-info .buyer-name{font-size:14pt;font-weight:700;}';
-        $html .= '.cover .buyer-info .buyer-id{font-size:8pt;opacity:.6;margin-top:4px;letter-spacing:1px;}';
+        $html .= '@page{margin:22mm 20mm 24mm;}';
+        $html .= 'body{font-family:"DejaVu Sans",Arial,sans-serif;color:#172033;margin:0;padding:0;font-size:11.2pt;line-height:1.72;background:#fff;}';
+        $html .= '.cover{height:297mm;margin:-22mm -20mm -24mm;background:#f8fafc;color:#0f172a;page-break-after:always;position:relative;overflow:hidden;}';
+        $html .= '.cover-top{height:9mm;background:#111827;}';
+        $html .= '.cover-mark{position:absolute;right:-34mm;top:22mm;width:118mm;height:118mm;border-radius:80mm;background:#4f46e5;opacity:.11;}';
+        $html .= '.cover-mark.two{right:122mm;top:218mm;width:70mm;height:70mm;background:#f59e0b;opacity:.18;}';
+        $html .= '.cover-inner{padding:34mm 26mm 0;}';
+        $html .= '.brand-row{font-size:9pt;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#4f46e5;margin-bottom:42mm;}';
+        $html .= '.type-pill{display:inline-block;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;border-radius:18px;padding:6px 13px;font-size:8pt;font-weight:800;letter-spacing:2px;text-transform:uppercase;}';
+        $html .= '.cover h1{font-family:Georgia,"DejaVu Serif",serif;font-size:35pt;font-weight:700;line-height:1.12;margin:18px 0 14px;color:#0f172a;}';
+        $html .= '.cover .by{font-size:13pt;color:#475569;margin:0 0 26mm;}';
+        $html .= '.cover .by strong{color:#111827;}';
+        $html .= '.meta-grid{width:100%;border-collapse:separate;border-spacing:0 9px;margin-top:10mm;}';
+        $html .= '.meta-grid td{background:#fff;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;padding:11px 14px;font-size:9.2pt;}';
+        $html .= '.meta-grid td:first-child{border-left:4px solid #4f46e5;border-radius:7px 0 0 7px;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:1.4px;width:38%;}';
+        $html .= '.meta-grid td:last-child{border-right:1px solid #e5e7eb;border-radius:0 7px 7px 0;color:#111827;font-weight:700;}';
+        $html .= '.ownership{position:absolute;left:26mm;right:26mm;bottom:28mm;border-top:1px solid #dbe3ef;padding-top:9mm;color:#475569;font-size:8.8pt;line-height:1.55;}';
+        $html .= '.ownership strong{color:#111827;}';
         $html .= '.page-break{page-break-before:always;}';
-        $html .= '.chapter{padding:60px 80px;}';
-        $html .= '.chapter h2{font-size:18pt;font-weight:700;border-bottom:2px solid #4F46E5;padding-bottom:10px;margin-bottom:30px;color:#4F46E5;}';
-        $html .= '.chapter p{text-indent:2em;margin:0 0 1em;}';
-        $html .= '.comic-page{page-break-inside:avoid;margin:0 0 18px;text-align:center;}';
+        $html .= '.chapter{padding:0;}';
+        $html .= '.chapter-kicker{font-size:8.5pt;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#4f46e5;margin:0 0 8px;}';
+        $html .= '.chapter h2{font-family:Georgia,"DejaVu Serif",serif;font-size:23pt;font-weight:700;line-height:1.2;margin:0 0 24px;color:#111827;border-bottom:1px solid #dbe3ef;padding-bottom:14px;}';
+        $html .= '.chapter p{font-family:Georgia,"DejaVu Serif",serif;text-indent:1.8em;margin:0 0 12px;color:#1f2937;}';
+        $html .= '.chapter p:first-of-type{text-indent:0;}';
+        $html .= '.empty-note{font-style:italic;color:#64748b;background:#f8fafc;border-left:4px solid #cbd5e1;padding:12px 14px;text-indent:0;}';
+        $html .= '.comic-page{page-break-inside:avoid;margin:0 0 18px;text-align:center;background:#f8fafc;border:1px solid #e5e7eb;padding:8px;}';
         $html .= '.comic-page img{max-width:100%;height:auto;display:block;margin:0 auto;}';
-        $html .= '.watermark{position:fixed;bottom:20px;right:20px;font-size:8pt;color:#ccc;letter-spacing:1px;}';
         $html .= '</style></head><body>';
 
         // Cover page
         $html .= '<div class="cover">';
+        $html .= '<div class="cover-top"></div><div class="cover-mark"></div><div class="cover-mark two"></div>';
         $html .= '<div class="cover-inner">';
-        $html .= '<div class="type">' . $typeLabel . '</div>';
+        $html .= '<div class="brand-row">NusaShare</div>';
+        $html .= '<div class="type-pill">' . $typeLabel . '</div>';
         $html .= '<h1>' . $title . '</h1>';
-        $html .= '<div class="by-label">Kreator</div>';
-        $html .= '<div class="by">' . $creator . '</div>';
-        $html .= '<div class="buyer-info">';
-        $html .= '<div class="buyer-label">Dimiliki oleh</div>';
-        $html .= '<div class="buyer-name">@' . htmlspecialchars($buyerUsername) . '</div>';
-        $html .= '<div class="buyer-id">User ID: ' . htmlspecialchars($buyerUserId) . '</div>';
+        $html .= '<div class="by">oleh <strong>' . $creator . '</strong></div>';
+        $html .= '<table class="meta-grid">';
+        $html .= '<tr><td>Format</td><td>' . $typeLabel . '</td></tr>';
+        $html .= '<tr><td>Jumlah bab</td><td>' . number_format($chapterTotal) . '</td></tr>';
+        $html .= '<tr><td>Dicetak</td><td>' . htmlspecialchars($generatedAt, ENT_QUOTES, 'UTF-8') . '</td></tr>';
+        $html .= '<tr><td>Pemilik</td><td>@' . $buyerName . '</td></tr>';
+        $html .= '</table>';
         $html .= '</div>';
-        $html .= '</div>';
-        $html .= '<div class="brand">NusaShare &mdash; Platform Kreator Indonesia</div>';
+        $html .= '<div class="ownership"><strong>Dokumen kepemilikan digital.</strong><br>File ini dibuat untuk akun @' . $buyerName . ' dengan User ID ' . $buyerId . '. Mohon tidak mendistribusikan ulang tanpa izin kreator.</div>';
         $html .= '</div>';
 
         // Chapters
         foreach ($chapters as $i => $chapter) {
             $chapterClass = $i === 0 ? 'chapter' : 'chapter page-break';
             $html .= '<div class="' . $chapterClass . '">';
-            $html .= '<h2>Bab ' . ($chapter['order_num'] ?? ($i + 1)) . ': ' . htmlspecialchars($chapter['title']) . '</h2>';
+            $html .= '<div class="chapter-kicker">Bab ' . ($chapter['order_num'] ?? ($i + 1)) . '</div>';
+            $html .= '<h2>' . htmlspecialchars($chapter['title'], ENT_QUOTES, 'UTF-8') . '</h2>';
             if ($work['content_type'] === 'comic') {
                 $html .= $this->renderComicChapterForPdf($chapter['body'] ?? '');
             } elseif (!empty($chapter['body'])) {
@@ -472,12 +561,11 @@ class CartController extends BaseController
                     $html .= '<p>' . nl2br(htmlspecialchars($p)) . '</p>';
                 }
             } else {
-                $html .= '<p><em>Konten bab ini tidak tersedia.</em></p>';
+                $html .= '<p class="empty-note">Konten bab ini tidak tersedia.</p>';
             }
             $html .= '</div>';
         }
 
-        $html .= '<div class="watermark">NusaShare.id &copy; ' . date('Y') . '</div>';
         $html .= '</body></html>';
 
         // Render HTML bab menjadi PDF asli sebelum dikirim ke browser.
@@ -491,6 +579,12 @@ class CartController extends BaseController
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
+        $canvas = $dompdf->getCanvas();
+        $fontMetrics = $dompdf->getFontMetrics();
+        $footerFont = $fontMetrics->getFont('DejaVu Sans', 'normal');
+        $canvas->page_text(42, 810, 'NusaShare - ' . $footerTitle, $footerFont, 8, [108, 117, 125]);
+        $canvas->page_text(512, 810, 'Hal. {PAGE_NUM} / {PAGE_COUNT}', $footerFont, 8, [108, 117, 125]);
+        $this->protectDompdf($dompdf, $this->getDownloadPassword($buyerUserId));
 
         $pdf = $dompdf->output();
 

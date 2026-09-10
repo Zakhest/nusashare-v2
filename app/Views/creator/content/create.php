@@ -412,6 +412,21 @@ Teks biasa akan otomatis terbagi menjadi paragraf."
                     <div id="monetizationSection" class="p-6 bg-indigo-50/50 rounded-3xl border border-indigo-100 space-y-6">
                         <div class="flex items-center justify-between">
                             <div>
+                                <h4 class="text-sm font-bold text-slate-900">Izinkan Pembaca Mengunduh PDF/ZIP</h4>
+                                <p class="text-[10px] text-slate-500 mt-0.5">Aktifkan agar pembaca bisa mengunduh karya melalui PDF atau ZIP.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="hidden" name="allow_downloads" value="0">
+                                <input type="checkbox" name="allow_downloads" value="1" class="sr-only peer" <?= old('allow_downloads', '1') == '1' ? 'checked' : '' ?>>
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                <span class="ml-3 text-xs font-bold text-slate-700 peer-checked:text-emerald-600">Diizinkan</span>
+                            </label>
+                        </div>
+
+                        <div class="border-t border-indigo-100/50"></div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
                                 <h4 class="text-sm font-bold text-slate-900">Monetisasi</h4>
                                 <p class="text-[10px] text-slate-500 mt-0.5">Tentukan apakah karya ini gratis atau berbayar.</p>
                             </div>
@@ -704,6 +719,7 @@ Teks biasa akan otomatis terbagi menjadi paragraf."
             formData.set('is_paid', '0');
             formData.set('price', '0');
             formData.set('purchase_price', '0');
+            formData.set('allow_downloads', '0');
             formData.set('timer_duration', '0');
         }
         return formData;

@@ -16,6 +16,15 @@
     <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
     <link rel="icon" href="<?= base_url('assets/icon/logonus.png') ?>" type="image/x-icon">
+
+    <!-- PWA -->
+    <link rel="manifest" href="<?= base_url('manifest.json') ?>">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NusaShare">
+    <link rel="apple-touch-icon" href="/assets/pwa/icon-192.png">
     
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
@@ -86,7 +95,7 @@
                     </div>
                     <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-[#4F46E5] font-bold overflow-hidden">
                         <?php if (!empty($profile['profile_image'])): ?>
-                            <img src="<?= base_url('image/profile/' . $profile['profile_image']) ?>" alt="Avatar" class="w-full h-full object-cover">
+                            <img src="<?= profile_url($profile['profile_image']) ?>" alt="Avatar" class="w-full h-full object-cover">
                         <?php else: ?>
                             <?= strtoupper(substr($username, 0, 1)) ?>
                         <?php endif; ?>
@@ -177,7 +186,7 @@
                                 <div class="flex items-center gap-2 mb-2">
                                     <div class="w-6 h-6 rounded-full bg-white/20 overflow-hidden border border-white/30 flex items-center justify-center text-xs font-bold">
                                         <?php if (!empty($latestFollowedUpdate['profile_image'])): ?>
-                                            <img src="<?= base_url('image/profile/' . $latestFollowedUpdate['profile_image']) ?>" alt="Creator" class="w-full h-full object-cover">
+                                            <img src="<?= profile_url($latestFollowedUpdate['profile_image']) ?>" alt="Creator" class="w-full h-full object-cover">
                                         <?php else: ?>
                                             <?= strtoupper(substr($latestFollowedUpdate['creator_name'], 0, 1)) ?>
                                         <?php endif; ?>
@@ -314,5 +323,6 @@
         window.nusaAppData = { baseUrl: '<?= base_url() ?>/' };
     </script>
     <script src="<?= base_url('assets/js/notifications.js') ?>"></script>
+    <script src="<?= base_url('assets/js/pwa.js') ?>"></script>
 </body>
 </html>
